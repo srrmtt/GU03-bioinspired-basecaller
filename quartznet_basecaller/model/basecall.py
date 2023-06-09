@@ -6,9 +6,9 @@ import torch
 import numpy as np
 from functools import partial
 
-from .multiprocessing import process_map
-from util import mean_qscore_from_qstring
-from util import chunk, stitch, batchify, unbatchify, permute
+from quartznet_basecaller.multiprocessing import process_map
+from .util import mean_qscore_from_qstring
+from .util import chunk, stitch, batchify, unbatchify, permute
 
 
 def basecall(model, reads, beamsize=5, chunksize=0, overlap=0, batchsize=1, qscores=False, reverse=None):
