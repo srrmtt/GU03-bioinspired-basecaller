@@ -3,7 +3,7 @@ Bonito Model template
 """
 
 import numpy as np
-from layers import Permute, LAYERS
+from .layers import Permute, LAYERS
 import torch
 from torch.nn.functional import log_softmax, ctc_loss
 from torch.nn import Module, ModuleList, Sequential, Conv1d, BatchNorm1d, Dropout
