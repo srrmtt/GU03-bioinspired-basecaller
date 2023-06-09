@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from functools import partial
 
-from bonito.multiprocessing import process_map
+from .multiprocessing import process_map
 from util import mean_qscore_from_qstring
 from util import chunk, stitch, batchify, unbatchify, permute
 
