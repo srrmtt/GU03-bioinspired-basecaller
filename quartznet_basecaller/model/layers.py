@@ -8,12 +8,12 @@ from torch.nn.init import orthogonal_
 from torch.nn.utils.fusion import fuse_conv_bn_eval
 
 
-layers = {}
+LAYERS = {}
 
 
 def register(layer):
     layer.name = layer.__name__.lower()
-    layers[layer.name] = layer
+    LAYERS[layer.name] = layer
     return layer
 
 
