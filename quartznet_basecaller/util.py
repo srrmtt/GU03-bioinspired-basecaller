@@ -39,7 +39,7 @@ def set_config_defaults(config, chunksize=None, batchsize=None, overlap=None, qu
     return config
 
 def load_model(dirname, device, weights=None, half=None, chunksize=None, batchsize=None, overlap=None, quantize=False, use_koi=False):
-    if not os.path.isfile(os.path.join(dirname, f'{MODEL}.toml')):
+    if not os.path.isfile(os.path.join(dirname, f'config.toml')):
         print(f"[ERROR] no toml file found at {dirname}.")
         return(-1)
     weights = os.path.join(dirname, 'weights_1.tar')
