@@ -106,7 +106,35 @@ def half_supported():
         return get_device_capability()[0] >= 7
     except:
         return False
+################################################################################################
+#                                       TRANSOFORMATIONS                                       #
+################################################################################################
+def permute(x, input_layout, output_layout):
+    """
+    Permute `x` from `input_layout` to `output_layout`
 
+    >>> permute(x, 'TNC', 'NTC')
+    """
+    if input_layout == output_layout: return x
+    return x.permute(*[input_layout.index(x) for x in output_layout])
+
+
+def concat(xs, dim=0):
+    """
+    Type agnostic concat.
+    """
+    if isinstance(xs[0], torch.Tensor):
+        return torch.cat(xs, dim=dim)
+    elif isinstance(xs[0], np.ndarray):
+        return np.concatenate(xs, axis=dim)
+    elif isinstance(xs[0], list):
+        return [x for l in xs for x in l]
+    elif isinstance(xs[0], str):
+        return ''.join(xs)
+    elif isinstance(xs[0], dict):
+        return {k: concat([x[k] for x in xs], dim) for k in xs[0].keys()}
+    else:
+        raise TypeError
 
 ################################################################################################
 #                                           METRICS                                            #
