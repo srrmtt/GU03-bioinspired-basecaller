@@ -3,23 +3,26 @@ import torch
 import numpy as np
 import os
 import toml
+import parasail
+import re
 
 from torch.cuda import get_device_capability
 from .model import Model
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 MODEL = 'dna_r9.4.1@v1'
-
-def init(seed, device, deterministic=True):
+SEED = 42
+DEVICE = 'cuda'
+def init(deterministic=True):
     """
     Initialise random libs and setup cudnn
 
     https://pytorch.org/docs/stable/notes/randomness.html
     """
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if device == "cpu": 
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    if DEVICE == "cpu": 
         print("[ERROR] no GPU available. The proccess will be stopped")
         return
     torch.backends.cudnn.enabled = True
@@ -103,3 +106,31 @@ def half_supported():
         return get_device_capability()[0] >= 7
     except:
         return False
+
+
+################################################################################################
+#                                           METRICS                                            #
+################################################################################################
+def accuracy(ref, seq, balanced=False, min_coverage=0.0):
+    """
+    Calculate the accuracy between `ref` and `seq`
+    """
+    alignment = parasail.sw_trace_striped_32(seq, ref, 8, 4, parasail.dnafull)
+    counts = defaultdict(int)
+
+    q_coverage = len(alignment.traceback.query) / len(seq)
+    r_coverage = len(alignment.traceback.ref) / len(ref)
+
+    if r_coverage < min_coverage:
+        return 0.0
+
+    _, cigar = parasail_to_sam(alignment, seq)
+
+    for count, op  in re.findall(split_cigar, cigar):
+        counts[op] += int(count)
+
+    if balanced:
+        accuracy = (counts['='] - counts['I']) / (counts['='] + counts['X'] + counts['D'])
+    else:
+        accuracy = counts['='] / (counts['='] + counts['I'] + counts['X'] + counts['D'])
+    return accuracy * 100
