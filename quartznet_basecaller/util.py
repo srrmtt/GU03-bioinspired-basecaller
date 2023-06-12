@@ -43,7 +43,7 @@ def load_model(dirname, device, weights=None, half=None, chunksize=None, batchsi
         print(f"[ERROR] no toml file found at {dirname}.")
         exit(-1)
     weights = os.path.join(dirname, f'{MODEL}.zip')
-    config = toml.load(os.path.join(dirname, 'f{MODEL}.toml'))
+    config = toml.load(os.path.join(dirname, f'{MODEL}.toml'))
     config = set_config_defaults(config, chunksize, batchsize, overlap, quantize)
 
     return _load_model(weights, config, device, half, use_koi)
