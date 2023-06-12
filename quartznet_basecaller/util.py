@@ -30,6 +30,11 @@ def init(deterministic=True):
     torch.backends.cudnn.benchmark = (not deterministic)
     assert(torch.cuda.is_available())
 
+def decode_ref(encoded, labels):
+    """
+    Convert a integer encoded reference into a string and remove blanks
+    """
+    return ''.join(labels[e] for e in encoded.tolist() if e)
 
 def set_config_defaults(config, chunksize=None, batchsize=None, overlap=None, quantize=False):
     basecall_params = config.get("basecaller", {})
