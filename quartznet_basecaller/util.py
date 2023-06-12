@@ -39,7 +39,7 @@ def set_config_defaults(config, chunksize=None, batchsize=None, overlap=None, qu
     return config
 
 def load_model(dirname, device, weights=None, half=None, chunksize=None, batchsize=None, overlap=None, quantize=False, use_koi=False):
-    if not os.path.isfile(dirname, f'{MODEL}.toml'):
+    if not os.path.isfile(os.path.join(dirname, f'{MODEL}.toml')):
         print(f"[ERROR] no toml file found at {dirname}.")
         exit(-1)
     weights = os.path.join(dirname, f'{MODEL}.zip')
@@ -78,7 +78,7 @@ def _load_model(weights_file, config, device, half=None, use_koi=False):
 
     if half: 
         model = model.half()
-        
+
     model.eval()
     model.to(device)
     return model
