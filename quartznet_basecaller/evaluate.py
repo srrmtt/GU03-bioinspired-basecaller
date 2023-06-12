@@ -21,7 +21,7 @@ def evaluate(model_directory:str, directory:Path, weights:str="1", chunks:int=10
     
     print("*\tLoading data...")
     try: 
-        _, valid_loader_kwargs = load_numpy()
+        _, valid_loader_kwargs = load_numpy(chunks, directory)
     except FileNotFoundError:
         print(f"[ERROR] cannot load data from {directory}.")
         return None
