@@ -4,6 +4,7 @@ import numpy as np
 import os
 import toml
 
+from torch.cuda import get_device_capability
 from .model import Model
 from collections import OrderedDict
 
