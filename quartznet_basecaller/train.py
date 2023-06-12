@@ -9,7 +9,7 @@ def train(training_directory: str, pretrained_weights_dir:str=None, model_config
 
     if not os.path.exists(workdir):
         print(f"[ERROR] {workdir} does not exists. Training stopped.")
-        exit(-1)
+        return(-1)
     
     # GPU and randomness initialization
     init(42, 'cuda')
@@ -24,7 +24,7 @@ def train(training_directory: str, pretrained_weights_dir:str=None, model_config
         # check if the weights folder exists
         if not os.path.isdir(dirname):
             print(f"[ERROR]: the specified directory {workdir}, with the pretrained weights does not exists. Training stopped.")
-            exit(-2)
+            return(-2)
         config = toml.load(os.path.join(dirname, f'{MODEL}.toml'))
 
         if 'lr_scheduler' in config:
@@ -39,5 +39,5 @@ def train(training_directory: str, pretrained_weights_dir:str=None, model_config
         
         print("[loading data]")
 
-        
+
 
