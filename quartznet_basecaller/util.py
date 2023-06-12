@@ -83,6 +83,22 @@ def _load_model(weights_file, config, device, half=None, use_koi=False):
     model.to(device)
     return model
 
+def match_names(state_dict, model):
+    keys_and_shapes = lambda state_dict: zip(*[
+        (k, s) for s, i, k in sorted([(v.shape, i, k)
+        for i, (k, v) in enumerate(state_dict.items())])
+    ])
+    k1, s1 = keys_and_shapes(state_dict)
+    k2, s2 = keys_and_shapes(model.state_dict())
+    assert s1 == s2
+    remap = dict(zip(k1, k2))
+    return OrderedDict([(k, remap[k]) for k in state_dict.keys()])
 
-
-
+def half_supported():
+    """
+    Returns whether FP16 is support on the GPU
+    """
+    try:
+        return get_device_capability()[0] >= 7
+    except:
+        return False
