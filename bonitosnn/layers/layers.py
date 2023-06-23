@@ -4,7 +4,7 @@
 import torch
 from torch import nn
 import numpy as np
-from utils import BASES
+from bonitosnn.utils import BASES
 import warnings
 
 import os
