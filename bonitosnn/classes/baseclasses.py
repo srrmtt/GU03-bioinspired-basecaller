@@ -10,7 +10,7 @@ from fast_ctc_decode import beam_search, viterbi_search, crf_greedy_search, crf_
 import uuid
 from tqdm import tqdm
 
-from read import read_fast5
+from bonitosnn.utils import read_fast5
 from normalization import normalize_signal_from_read_data, med_mad
 from bonitosnn.constants import CTC_BLANK, BASES_CRF, S2S_PAD, S2S_EOS, S2S_SOS, S2S_OUTPUT_CLASSES
 from bonitosnn.constants import CRF_STATE_LEN, CRF_BIAS, CRF_SCALE, CRF_BLANK_SCORE, CRF_N_BASE, BASES
