@@ -1,2 +1,4 @@
 fast_ctc_decode==0.3.5
 parasail
+ont-fast5-api==4.0.2
+scipy
