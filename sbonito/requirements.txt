@@ -1,0 +1,12 @@
+torch
+fast_ctc_decode
+h5py
+ipykernel
+mappy
+numpy
+ont-fast5-api
+ont-koi
+parasail
+scipy
+tqdm
+snntorch

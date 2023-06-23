@@ -1,0 +1,11 @@
+TRAIN:
+
+python3 ./scripts/train_original.py --data-dir ./demo_data/nn_input --output-dir ./demo_data/trained_model_original --model bonito --window-size 2000 --batch-size 64
+
+Basecalling:
+
+ python ./scripts/basecall_original.py --model bonito --fast5-dir ./demo_data/fast5 --checkpoint ./demo_data/trained_model_original/checkpoints/checkpoint_1.pt --output-file ./demo_data/demo_basecalls.fastq
+
+Evaluate:
+
+python3 evaluate.py --basecalls-path demo_data/demo_basecalls.fastq --references-path demo_data/reference.fasta --model-name prova1
