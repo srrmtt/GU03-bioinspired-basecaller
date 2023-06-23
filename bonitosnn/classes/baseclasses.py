@@ -15,7 +15,7 @@ from bonitosnn.utils import CTC_BLANK, BASES_CRF, S2S_PAD, S2S_EOS, S2S_SOS, S2S
 from bonitosnn.utils import CRF_STATE_LEN, CRF_BIAS, CRF_SCALE, CRF_BLANK_SCORE, CRF_N_BASE, BASES
 from bonitosnn.utils import STICH_ALIGN_FUNCTION, STICH_GAP_OPEN_PENALTY, STICH_GAP_EXTEND_PENALTY, RECURRENT_DECODING_DICT, MATRIX
 
-from evaluation import alignment_accuracy, make_align_arr, elongate_cigar
+from bonitosnn.evaluation import alignment_accuracy, make_align_arr, elongate_cigar
 
 from bonitosnn.layers import CTC_CRF, BonitoLinearCRFDecoder
 
