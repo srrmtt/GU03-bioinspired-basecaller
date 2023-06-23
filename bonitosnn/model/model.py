@@ -8,8 +8,8 @@ import os
 import sys
 from torch import nn
 
-from classes import BaseModelImpl
-from layers import BonitoLSTM
+from bonitosnn.classes import BaseModelImpl
+from bonitosnn.layers import BonitoLSTM
 
 
 class BonitoModel(BaseModelImpl):

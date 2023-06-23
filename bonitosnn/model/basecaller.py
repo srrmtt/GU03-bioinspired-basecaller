@@ -5,7 +5,7 @@ it will produce one (or more) fasta files with the basecalls
 import sys
 
 
-from classes import BaseBasecaller
+from bonitosnn.classes import BaseBasecaller
 
 class Basecaller(BaseBasecaller):
     """
