@@ -61,3 +61,29 @@ def read_metadata(file_name):
         fp.close()
     zip_file.close()
     return metadata
+
+class TimeoutException(Exception): pass
+
+@contextmanager
+def time_limit(seconds):
+    """Raise a TimeoutException if a function runs for too long
+
+    Args:
+        seconds (int): amount of max time the function can be run
+
+    Example:
+    try:
+        with time_limit(10):
+            my_func()
+    except TimeoutException:
+        do_something()
+    """
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)  
+
