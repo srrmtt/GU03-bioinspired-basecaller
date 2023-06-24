@@ -1,5 +1,12 @@
-fast_ctc_decode==0.3.5
+torch
+fast_ctc_decode
+h5py
+ipykernel
+mappy
+numpy
+ont-fast5-api
+ont-koi
 parasail
-ont-fast5-api==4.0.2
 scipy
-seqdist
+tqdm
+snntorch
