@@ -100,9 +100,12 @@ class BonitoLinearCRFDecoder(nn.Module):
         return scores
     
 try:
-    import seqdist.sparse
-    from seqdist.ctc_simple import logZ_cupy, viterbi_alignments
-    from seqdist.core import SequenceDist, Max, Log, semiring
+    import koi
+    from koi.ctc import SequenceDist, Max, Log, semiring
+    from koi.ctc import logZ_cu, viterbi_alignments, logZ_cu_sparse, bwd_scores_cu_sparse, fwd_scores_cu_sparse
+    # import seqdist.sparse
+    # from seqdist.ctc_simple import logZ_cupy, viterbi_alignments
+    # from seqdist.core import SequenceDist, Max, Log, semiring
     
     class CTC_CRF(SequenceDist):
         """CTC-CRF mix
