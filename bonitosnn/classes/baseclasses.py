@@ -19,6 +19,252 @@ from bonitosnn.evaluation import alignment_accuracy, make_align_arr, elongate_ci
 
 from bonitosnn.layers import CTC_CRF, BonitoLinearCRFDecoder
 
+class BaseModel(nn.Module):
+    """Abstract class for basecaller models
+
+    It contains some basic methods: train, validate, predict, ctc_decode...
+    Since most models follow a similar style.
+    """
+    
+    def __init__(self, device, dataloader_train, dataloader_validation, 
+                 optimizer = None, schedulers = dict(), criterions = dict(), clipping_value = 2, scaler = None, use_amp = False, use_sam = False):
+        super(BaseModel, self).__init__()
+        
+        self.device = device
+        
+        # data
+        self.dataloader_train = dataloader_train
+        self.dataloader_validation = dataloader_validation
+
+        # optimization
+        self.optimizer = optimizer
+        self.schedulers = schedulers
+        self.criterions = criterions
+        self.clipping_value = clipping_value
+        self.scaler = scaler
+        self.use_sam = use_sam
+        if self.scaler is not None:
+            self.use_amp = True
+        else:
+            self.use_amp = use_amp
+        
+        self.init_weights()
+        self.stride = self.get_stride()
+        self.dummy_batch = None
+        
+    @abstractmethod
+    def forward(self, batch):
+        """Forward through the network
+        """
+        raise NotImplementedError()
+    
+    def train_step(self, batch):
+        """Train a step with a batch of data
+        
+        Args:
+            batch (dict): dict with keys 'x' (batch, len) 
+                                         'y' (batch, len)
+        """
+        
+        self.train()
+        x = batch['x'].to(self.device)
+        x = x.unsqueeze(1) # add channels dimension
+        y = batch['y'].to(self.device)
+        
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            p = self.forward(x) # forward through the network
+            loss, losses = self.calculate_loss(y, p)
+
+        self.optimize(loss)
+        
+        return losses, p
+    
+    def validation_step(self, batch):
+        """Predicts a single batch of data
+        Args:
+            batch (dict): dict filled with tensors of input and output
+        """
+        
+        self.eval()
+        with torch.no_grad():
+            x = batch['x'].to(self.device)
+            x = x.unsqueeze(1) # add channels dimension
+            y = batch['y'].to(self.device)
+
+            with torch.cuda.amp.autocast(enabled=self.use_amp):
+                p = self.forward(x) # forward through the network
+                _, losses = self.calculate_loss(y, p)
+            
+        return losses, p
+    
+    def predict_step(self, batch):
+        """
+        Args:
+            batch (dict) dict fill with tensor just for prediction
+        """
+        self.eval()
+        with torch.no_grad():
+            x = batch['x'].to(self.device)
+            x = x.unsqueeze(1)
+            with torch.cuda.amp.autocast(enabled=self.use_amp):
+                p = self.forward(x)
+            
+        return p
+    
+    @abstractmethod    
+    def decode(self, p, greedy = True):
+        """Abstract method that is used to call the decoding approach for
+        evaluation metrics during training and evaluation. 
+        For example, it can be as simple as argmax for class prediction.
+        
+        Args:
+            p (tensor): tensor with the predictions with shape [timesteps, batch, classes]
+            greedy (bool): whether to decode using a greedy approach
+        Returns:
+            A (list) with the decoded strings
+        """
+        raise NotImplementedError()
+
+    @abstractmethod    
+    def calculate_loss(self, y, p):
+        """Calculates the losses for each criterion
+        
+        Args:
+            y (tensor): tensor with labels
+            p (tensor): tensor with predictions
+            
+        Returns:
+            loss (tensor): weighted sum of losses
+            losses (dict): with detached values for each loss, the weighed sum is named
+                global_loss
+        """
+        
+        raise NotImplementedError()
+        return loss, losses
+    
+    
+    def optimize(self, loss):
+        """Optimizes the model by calculating the loss and doing backpropagation
+        
+        Args:
+            loss (float): calculated loss that can be backpropagated
+        """
+        
+        if self.use_sam: 
+            raise NotImplementedError()
+            # TODO
+            # it is tricky how to use this SAM thing (https://github.com/davda54/sam)
+            # because we have to calculate the loss twice, so we have to find a way
+            # to make this general
+            # also, it is unclear where to put the gradient clipping
+
+            # loss.backward()
+            # self.optimizer.first_step(zero_grad=True)
+            # loss, losses = self.calculate_loss(y, p)
+            # self.optimizer.second_step(zero_grad=True)
+        elif self.scaler is not None:
+
+            self.scaler.scale(loss).backward()
+
+            self.scaler.unscale_(self.optimizer)
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.clipping_value)
+
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            self.optimizer.zero_grad()
+
+        else:
+            self.optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.clipping_value)
+            self.optimizer.step()
+            
+        for scheduler in self.schedulers.values():
+            if scheduler:
+                scheduler.step()
+            
+        return None
+
+    def evaluate(self, batch, predictions):
+        """Evaluate the predictions by calculating the accuracy
+        
+        Args:
+            batch (dict): dict with tensor with [batch, len] in key 'y'
+            predictions (list): list of predicted sequences as strings
+        """
+        y = batch['y'].cpu().numpy()
+        y_list = self.dataloader_train.dataset.encoded_array_to_list_strings(y)
+        accs = list()
+        for i, sample in enumerate(y_list):
+            accs.append(alignment_accuracy(sample, predictions[i]))
+            
+        return {'metric.accuracy': accs}
+    
+    def init_weights(self):
+        """Initialize weights from uniform distribution
+        """
+        for name, param in self.named_parameters():
+            nn.init.uniform_(param.data, -0.08, 0.08)
+
+    def count_parameters(self):
+        """Count trainable parameters in model
+        """
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+    
+    def save(self, checkpoint_file):
+        """Save the model state
+        """
+        if self.scaler is not None:
+            scaler_dict = self.scaler.state_dict()
+        else:
+            scaler_dict = None
+            
+        save_dict = {'model_state': self.state_dict(), 
+                     'optimizer_state': self.optimizer.state_dict(),
+                     'scaler': scaler_dict}
+
+        for k, v in self.schedulers.items():
+            save_dict[k + '_state'] = v.state_dict()
+        torch.save(save_dict, checkpoint_file)
+    
+    def load(self, checkpoint_file, initialize_lazy = True):
+        """Load a model state from a checkpoint file
+
+        Args:
+            checkpoint_file (str): file were checkpoints are saved
+            initialize_lazy (bool): to do a forward step before loading model,
+                this solves the problem for layers that are initialized lazyly
+        """
+
+        if initialize_lazy:
+            if self.dummy_batch is None:
+                dummy_batch = {'x': torch.randn([16, 1000], device = self.device)}
+            else:
+                dummy_batch = self.dummy_batch
+            self.predict_step(dummy_batch)
+
+        checkpoints = torch.load(checkpoint_file)
+        self.load_state_dict(checkpoints['model_state'])
+
+        if self.optimizer is not None:
+            self.optimizer.load_state_dict(checkpoints['optimizer_state'])
+        if self.scaler is not None:
+            self.optimizer.load_state_dict(checkpoints['scaler'])
+        if 'lr_scheduler' in list(self.schedulers.keys()):
+            self.schedulers['lr_scheduler'].load_state_dict(checkpoints['lr_scheduler_state'])
+
+        
+    def get_stride(self):
+        """Gives the total stride of the model
+        """
+        return None
+        
+    @abstractmethod
+    def load_default_configuration(self, default_all = False):
+        """Method to load default model configuration
+        """
+        raise NotImplementedError()
+        
 class BaseModelImpl(BaseModelCTC, BaseModelCRF):
 
     def __init__(self, decoder_type = 'ctc', *args, **kwargs):
