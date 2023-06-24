@@ -1,1 +1,1 @@
-from .baseclasses import BaseBasecaller
+from .baseclasses import BaseBasecaller, BaseModelImpl
