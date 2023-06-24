@@ -131,3 +131,4 @@ def read_fast5(fast5_file, read_ids = None):
                 read_reads[read.read_id] = (ReadData(read, fast5_file))
         
     return read_reads
+
