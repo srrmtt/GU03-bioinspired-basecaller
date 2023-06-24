@@ -264,70 +264,6 @@ class BaseModel(nn.Module):
         """Method to load default model configuration
         """
         raise NotImplementedError()
-        
-class BaseModelImpl(BaseModelCTC, BaseModelCRF):
-
-    def __init__(self, decoder_type = 'ctc', *args, **kwargs):
-        super(BaseModelImpl, self).__init__(*args, **kwargs)
-
-        valid_decoder_types = ['ctc', 'crf']
-        if decoder_type not in valid_decoder_types:
-            raise ValueError('Given decoder_type: ' + str(decoder_type) + ' is not valid. Valid options are: ' + str(valid_decoder_types))
-        self.decoder_type = decoder_type
-
-    def decode(self, p, greedy = True, *args, **kwargs):
-        """Decode the predictions
-         
-        Args:
-            p (tensor): tensor with the predictions with shape [timesteps, batch, classes]
-            and logprobabilities
-            greedy (bool): whether to decode using a greedy approach
-        Returns:
-            A (list) with the decoded strings
-        """
-
-        if self.decoder_type == 'ctc':
-            p = p.exp().detach().cpu().numpy()
-            return BaseModelCTC.decode(self, p.astype(np.float32), greedy = greedy, *args, **kwargs)
-        if self.decoder_type == 'crf':
-            return BaseModelCRF.decode(self, p, greedy, *args, **kwargs)
-        
-    def calculate_loss(self, y, p):
-        """Calculates the losses for each criterion
-        
-        Args:
-            y (tensor): tensor with labels [batch, len]
-            p (tensor): tensor with predictions [len, batch, channels]
-            
-        Returns:
-            loss (tensor): weighted sum of losses
-            losses (dict): with detached values for each loss, the weighed sum is named
-                global_loss
-        """
-        
-        if self.decoder_type == 'ctc':
-            return BaseModelCTC.calculate_loss(self, y, p)
-        if self.decoder_type == 'crf':
-            return BaseModelCRF.calculate_loss(self, y, p)
-
-    def build_decoder(self, encoder_output_size, decoder_type):
-
-        if decoder_type == 'ctc':
-            decoder = nn.Sequential(nn.Linear(encoder_output_size, len(BASES)+1), nn.LogSoftmax(-1))
-        elif decoder_type == 'crf':
-            decoder = BonitoLinearCRFDecoder(
-                insize = encoder_output_size, 
-                n_base = CRF_N_BASE, 
-                state_len = CRF_STATE_LEN, 
-                bias=CRF_BIAS, 
-                scale= CRF_SCALE, 
-                blank_score= CRF_BLANK_SCORE
-            )
-        else:
-            raise ValueError('decoder_type should be "ctc" or "crf", given: ' + str(decoder_type))
-        return decoder
-
-
 class BaseModelCTC(BaseModel):
     
     def __init__(self, blank = CTC_BLANK, *args, **kwargs):
@@ -422,7 +358,6 @@ class BaseModelCTC(BaseModel):
         loss = self.criterions["ctc"](p, y, p_len, y_len)
         
         return loss
-
 class BaseModelCRF(BaseModel):
     
     def __init__(self, state_len = 4, alphabet = BASES_CRF, *args, **kwargs):
@@ -583,7 +518,67 @@ class BaseModelCRF(BaseModel):
                                       reduction='mean', 
                                       normalise_scores=True)
         return loss
+class BaseModelImpl(BaseModelCTC, BaseModelCRF):
 
+    def __init__(self, decoder_type = 'ctc', *args, **kwargs):
+        super(BaseModelImpl, self).__init__(*args, **kwargs)
+
+        valid_decoder_types = ['ctc', 'crf']
+        if decoder_type not in valid_decoder_types:
+            raise ValueError('Given decoder_type: ' + str(decoder_type) + ' is not valid. Valid options are: ' + str(valid_decoder_types))
+        self.decoder_type = decoder_type
+
+    def decode(self, p, greedy = True, *args, **kwargs):
+        """Decode the predictions
+         
+        Args:
+            p (tensor): tensor with the predictions with shape [timesteps, batch, classes]
+            and logprobabilities
+            greedy (bool): whether to decode using a greedy approach
+        Returns:
+            A (list) with the decoded strings
+        """
+
+        if self.decoder_type == 'ctc':
+            p = p.exp().detach().cpu().numpy()
+            return BaseModelCTC.decode(self, p.astype(np.float32), greedy = greedy, *args, **kwargs)
+        if self.decoder_type == 'crf':
+            return BaseModelCRF.decode(self, p, greedy, *args, **kwargs)
+        
+    def calculate_loss(self, y, p):
+        """Calculates the losses for each criterion
+        
+        Args:
+            y (tensor): tensor with labels [batch, len]
+            p (tensor): tensor with predictions [len, batch, channels]
+            
+        Returns:
+            loss (tensor): weighted sum of losses
+            losses (dict): with detached values for each loss, the weighed sum is named
+                global_loss
+        """
+        
+        if self.decoder_type == 'ctc':
+            return BaseModelCTC.calculate_loss(self, y, p)
+        if self.decoder_type == 'crf':
+            return BaseModelCRF.calculate_loss(self, y, p)
+
+    def build_decoder(self, encoder_output_size, decoder_type):
+
+        if decoder_type == 'ctc':
+            decoder = nn.Sequential(nn.Linear(encoder_output_size, len(BASES)+1), nn.LogSoftmax(-1))
+        elif decoder_type == 'crf':
+            decoder = BonitoLinearCRFDecoder(
+                insize = encoder_output_size, 
+                n_base = CRF_N_BASE, 
+                state_len = CRF_STATE_LEN, 
+                bias=CRF_BIAS, 
+                scale= CRF_SCALE, 
+                blank_score= CRF_BLANK_SCORE
+            )
+        else:
+            raise ValueError('decoder_type should be "ctc" or "crf", given: ' + str(decoder_type))
+        return decoder
 
 class BaseBasecaller():
 
