@@ -10,13 +10,14 @@ from fast_ctc_decode import beam_search, viterbi_search, crf_greedy_search, crf_
 import uuid
 from tqdm import tqdm
 
-from bonitosnn.utils import read_fast5, normalize_signal_from_read_data, med_mad
+from bonitosnn.utils import read_metadata, time_limit, TimeoutException
+from bonitosnn.utils import read_fast5
+from bonitosnn.utils import normalize_signal_from_read_data, med_mad
 from bonitosnn.utils import CTC_BLANK, BASES_CRF, S2S_PAD, S2S_EOS, S2S_SOS, S2S_OUTPUT_CLASSES
 from bonitosnn.utils import CRF_STATE_LEN, CRF_BIAS, CRF_SCALE, CRF_BLANK_SCORE, CRF_N_BASE, BASES
 from bonitosnn.utils import STICH_ALIGN_FUNCTION, STICH_GAP_OPEN_PENALTY, STICH_GAP_EXTEND_PENALTY, RECURRENT_DECODING_DICT, MATRIX
 
 from bonitosnn.evaluation import alignment_accuracy, make_align_arr, elongate_cigar
-
 from bonitosnn.layers import CTC_CRF, BonitoLinearCRFDecoder
 
 class BaseModel(nn.Module):
@@ -264,6 +265,7 @@ class BaseModel(nn.Module):
         """Method to load default model configuration
         """
         raise NotImplementedError()
+
 class BaseModelCTC(BaseModel):
     
     def __init__(self, blank = CTC_BLANK, *args, **kwargs):
@@ -358,6 +360,7 @@ class BaseModelCTC(BaseModel):
         loss = self.criterions["ctc"](p, y, p_len, y_len)
         
         return loss
+
 class BaseModelCRF(BaseModel):
     
     def __init__(self, state_len = 4, alphabet = BASES_CRF, *args, **kwargs):
@@ -518,6 +521,7 @@ class BaseModelCRF(BaseModel):
                                       reduction='mean', 
                                       normalise_scores=True)
         return loss
+
 class BaseModelImpl(BaseModelCTC, BaseModelCRF):
 
     def __init__(self, decoder_type = 'ctc', *args, **kwargs):
@@ -579,6 +583,431 @@ class BaseModelImpl(BaseModelCTC, BaseModelCRF):
         else:
             raise ValueError('decoder_type should be "ctc" or "crf", given: ' + str(decoder_type))
         return decoder
+
+
+
+class BaseNanoporeDataset(Dataset):
+    """Base dataset class that contains Nanopore data
+    
+    The simplest class that handles a hdf5 file that has two datasets
+    named 'x' and 'y'. The first one contains an array of floats with
+    the raw data normalized. The second one contains an array of 
+    byte-strings with the bases appended with ''.
+    
+    This dataset already takes case of shuffling, for the dataloader set
+    shuffling to False.
+    
+    Args:
+        data (str): dir with the npz files
+        decoding_dict (dict): dictionary that maps integers to bases
+        encoding_dict (dict): dictionary that maps bases to integers
+        split (float): fraction of samples for training
+        randomizer (bool): whether to randomize the samples order
+        seed (int): seed for reproducible randomization
+        s2s (bool): whether to encode for s2s models
+        token_sos (int): value used for encoding start of sequence
+        token_eos (int): value used for encoding end of sequence
+        token_pad (int): value used for padding all the sequences (s2s and not s2s)
+    """
+
+    def __init__(self, data_dir, decoding_dict, encoding_dict, 
+                 split = 0.95, shuffle = True, seed = None,
+                 s2s = False, token_sos = S2S_SOS, token_eos = S2S_EOS, token_pad = S2S_PAD):
+        super(BaseNanoporeDataset, self).__init__()
+        
+        self.data_dir = data_dir
+        self.decoding_dict = decoding_dict
+        self.encoding_dict = encoding_dict
+        self.split = split
+        self.shuffle = shuffle
+        self.seed = seed
+        
+        self.files_list = self._find_files()
+        self.num_samples_per_file = self._get_samples_per_file()
+        self.total_num_samples = np.sum(np.array(self.num_samples_per_file))
+        self.train_files_idxs = set()
+        self.validation_files_idxs = set()
+        self.train_idxs = list()
+        self.validation_idxs = list()
+        self.train_sampler = None
+        self.validation_sampler = None
+        self._split_train_validation()
+        self._get_samplers()
+        
+        self.loaded_train_data = None
+        self.loaded_validation_data = None
+        self.current_loaded_train_idx = None
+        self.current_loaded_validation_idx = None
+
+        self.s2s = s2s
+        self.token_sos = token_sos
+        self.token_eos = token_eos
+        self.token_pad = token_pad
+
+        self._check()
+    
+    def __len__(self):
+        """Number of samples
+        """
+        return self.total_num_samples
+        
+    def __getitem__(self, idx):
+        """Get a set of samples by idx
+        
+        If the datafile is not loaded it loads it, otherwise
+        it uses the already in memory data.
+        
+        Returns a dictionary
+        """
+        if idx[0] in self.train_files_idxs:
+            if idx[0] != self.current_loaded_train_idx:
+                self.loaded_train_data = self.load_file_into_memory(idx[0])
+                self.current_loaded_train_idx = idx[0]
+            return self.get_data(data_dict = self.loaded_train_data, idx = idx[1])
+        elif idx[0] in self.validation_files_idxs:
+            if idx[0] != self.current_loaded_validation_idx:
+                self.loaded_validation_data = self.load_file_into_memory(idx[0])
+                self.current_loaded_validation_idx = idx[0]
+            return self.get_data(data_dict = self.loaded_validation_data, idx = idx[1])
+        else:
+            raise IndexError('Given index not in train or validation files indices: ' + str(idx[0]))
+    
+    def _check(self):
+        """Check for possible problems
+        """
+
+        # check that the encoding dict does not conflict with S2S tokens
+        if self.s2s:
+            s2s_tokens = (self.token_eos, self.token_sos, self.token_pad)
+            for v in self.encoding_dict.values():
+                assert v not in s2s_tokens
+
+    def _find_files(self):
+        """Finds list of files to read
+        """
+        l = list()
+        for f in os.listdir(self.data_dir):
+            if f.endswith('.npz'):
+                l.append(f)
+        l = sorted(l)
+        return l
+    
+    def _get_samples_per_file(self):
+        """Gets the number of samples per file from the file name
+        """
+        l = list()
+        for f in self.files_list:
+            metadata = read_metadata(os.path.join(self.data_dir, f))
+            l.append(metadata[0][1][0]) # [array_num, shape, first elem shape]
+        return l
+    
+    def _split_train_validation(self):
+        """Splits datafiles and idx for train and validation according to split
+        """
+        
+        # split train and validation data based on files
+        num_train_files = int(len(self.files_list) * self.split)
+        num_validation_files = len(self.files_list) - num_train_files
+        
+        files_idxs = list(range(len(self.files_list)))
+        if self.shuffle:
+            if self.seed:
+                random.seed(self.seed)
+            random.shuffle(files_idxs)
+            
+        self.train_files_idxs = set(files_idxs[:num_train_files])
+        self.validation_files_idxs = set(files_idxs[num_train_files:])
+        
+        # shuffle indices within each file and make a list of indices (file_idx, sample_idx)
+        # as tuples that can be iterated by the sampler
+        for idx in self.train_files_idxs:
+            sample_idxs = list(range(self.num_samples_per_file[idx]))
+            if self.shuffle:
+                if self.seed:
+                    random.seed(self.seed)
+                random.shuffle(sample_idxs)
+            for i in sample_idxs:
+                self.train_idxs.append((idx, i))
+        
+        for idx in self.validation_files_idxs:
+            sample_idxs = list(range(self.num_samples_per_file[idx]))
+            if self.shuffle:
+                if self.seed:
+                    random.seed(self.seed)
+                random.shuffle(sample_idxs)
+            for i in sample_idxs:
+                self.validation_idxs.append((idx, i))
+                
+        return None
+    
+    def _get_samplers(self):
+        """Add samplers
+        """
+        self.train_sampler = IdxSampler(self.train_idxs, data_source = self)
+        self.validation_sampler = IdxSampler(self.validation_idxs, data_source = self)
+        return None
+            
+    def load_file_into_memory(self, idx):
+        """Loads a file into memory and processes it
+        """
+        arr = np.load(os.path.join(self.data_dir, self.files_list[idx]))
+        x = arr['x']
+        y = arr['y']
+        return self.process({'x':x, 'y':y})
+    
+    def get_data(self, data_dict, idx):
+        """Slices the data for given indices
+        """
+        return {'x': data_dict['x'][idx], 'y': data_dict['y'][idx]}
+    
+    def process(self, data_dict):
+        """Processes the data into a ready for training format
+        """
+        
+        y = data_dict['y']
+        if y.dtype != 'U1':
+            y = y.astype('U1')
+        if self.s2s:
+            y = self.encode_s2s(y)
+        else:
+            y = self.encode(y)
+        data_dict['y'] = y
+        return data_dict
+    
+    def encode(self, y_arr):
+        """Encode the labels
+        """
+        
+        new_y = np.full(y_arr.shape, self.token_pad, dtype=int)
+        for k, v in self.encoding_dict.items():
+            new_y[y_arr == k] = v
+        return new_y
+
+    def encode_s2s(self, y_arr):
+    
+        new_y = np.full(y_arr.shape, self.token_pad, dtype=int)
+        # get the length of each sample to add eos token at the end
+        sample_len = np.sum(y_arr != '', axis = 1)
+        # array with sos_token to append at the begining
+        sos_token = np.full((y_arr.shape[0], 1), self.token_sos, dtype=int)
+        # replace strings for integers according to encoding dict
+        for k, v in self.encoding_dict.items():
+            if v is None:
+                continue
+            new_y[y_arr == k] = v
+        # replace first padding for eos token
+        for i, s in enumerate(sample_len):
+            new_y[i, s] = self.token_eos
+        # add sos token and slice of last padding to keep same shape
+        new_y = np.concatenate([sos_token, new_y[:, :-1]], axis = 1)
+        return new_y
+    
+    def encoded_array_to_list_strings(self, y):
+        """Convert an encoded array back to a list of strings
+
+        Args:
+            y (array): with shape [batch, len]
+        """
+
+        y = y.astype(str)
+        if self.s2s:
+            # replace tokens with nothing
+            for k in [self.token_sos, self.token_eos, self.token_pad]:
+                y[y == str(k)] = ''
+        else:
+            y[y == str(self.token_pad)] = ''
+        # replace predictions with bases
+        for k, v in self.decoding_dict.items():
+            y[y == str(k)] = v
+
+        # join everything
+        decoded_sequences = ["".join(i) for i in y.tolist()]
+        return decoded_sequences
+
+
+class IdxSampler(Sampler):
+    """Sampler class to not sample from all the samples
+    from a dataset.
+    """
+    def __init__(self, idxs, *args, **kwargs):
+        super(IdxSampler, self).__init__(*args, **kwargs)
+        self.idxs = idxs
+
+    def __iter__(self):
+        return iter(self.idxs)
+
+    def __len__(self):
+        return len(self.idxs)
+        
+class BaseFast5Dataset(Dataset):
+    """Base dataset class that iterates over fast5 files for basecalling
+    """
+
+    def __init__(self, 
+        data_dir = None, 
+        fast5_list = None, 
+        recursive = True, 
+        buffer_size = 100,
+        window_size = 2000,
+        window_overlap = 400,
+        trim_signal = True,
+        ):
+        """
+        Args:
+            data_dir (str): dir where the fast5 file
+            fast5_list (str): file with a list of files to be processed
+            recursive (bool): if the data_dir should be searched recursively
+            buffer_size (int): number of fast5 files to read 
+
+        data_dir and fast5_list are esclusive
+        """
+        
+        super(BaseFast5Dataset, self).__init__()
+    
+        self.data_dir = data_dir
+        self.recursive = recursive
+        self.buffer_size = buffer_size
+        self.window_size = window_size
+        self.window_overlap = window_overlap
+        self.trim_signal = trim_signal
+
+        if fast5_list is None:
+            self.data_files = self.find_all_fast5_files()
+        else:
+            self.data_files = self.read_fast5_list(fast5_list)
+    
+    def __len__(self):
+        return len(self.data_files)
+    
+    def __getitem__(self, idx):
+        return self.process_reads(self.data_files[idx])
+
+        
+    def find_all_fast5_files(self):
+        """Find all fast5 files in a dir recursively
+        """
+        # find all the files that we have to process
+        files_list = list()
+        for path in Path(self.data_dir).rglob('*.fast5'):
+            files_list.append(str(path))
+        files_list = self.buffer_list(files_list, self.buffer_size)
+        return files_list
+
+    def read_fast5_list(self, fast5_list):
+        """Read a text file with the reads to be processed
+        """
+
+        if isinstance(fast5_list, list):
+            return self.buffer_list(fast5_list, self.buffer_size)
+
+        files_list = list()
+        with open(fast5_list, 'r') as f:
+            for line in f:
+                files_list.append(line.strip('\n'))
+        files_list = self.buffer_list(files_list, self.buffer_size)
+        return files_list
+
+    def buffer_list(self, files_list, buffer_size):
+        buffered_list = list()
+        for i in range(0, len(files_list), buffer_size):
+            buffered_list.append(files_list[i:i+buffer_size])
+        return buffered_list
+
+    def trim(self, signal, window_size=40, threshold_factor=2.4, min_elements=3):
+        """
+
+        from: https://github.com/nanoporetech/bonito/blob/master/bonito/fast5.py
+        """
+
+        min_trim = 10
+        signal = signal[min_trim:]
+
+        med, mad = med_mad(signal[-(window_size*100):])
+
+        threshold = med + mad * threshold_factor
+        num_windows = len(signal) // window_size
+
+        seen_peak = False
+
+        for pos in range(num_windows):
+            start = pos * window_size
+            end = start + window_size
+            window = signal[start:end]
+            if len(window[window > threshold]) > min_elements or seen_peak:
+                seen_peak = True
+                if window[-1] > threshold:
+                    continue
+                return min(end + min_trim, len(signal)), len(signal)
+
+        return min_trim, len(signal)
+
+    def chunk(self, signal, chunksize, overlap):
+        """
+        Convert a read into overlapping chunks before calling
+
+        The first N datapoints will be cut out so that the window ends perfectly
+        with the number of datapoints of the read.
+        """
+        if isinstance(signal, np.ndarray):
+            signal = torch.from_numpy(signal)
+
+        T = signal.shape[0]
+        if chunksize == 0:
+            chunks = signal[None, :]
+        elif T < chunksize:
+            chunks = torch.nn.functional.pad(signal, (chunksize - T, 0))[None, :]
+        else:
+            stub = (T - overlap) % (chunksize - overlap)
+            chunks = signal[stub:].unfold(0, chunksize, chunksize - overlap)
+        
+        return chunks.unsqueeze(1)
+    
+    def normalize(self, read_data):
+        return normalize_signal_from_read_data(read_data)
+
+    def process_reads(self, read_list):
+        """
+        Args:
+            read_list (list): list of files to be processed
+
+        Returns:
+            two arrays, the first one with the normalzized chunked data,
+            the second one with the read ids of each chunk.
+        """
+        chunks_list = list()
+        id_list = list()
+        l_list = list()
+
+        for read_file in read_list:
+            reads_data = read_fast5(read_file)
+
+            for read_id in reads_data.keys():
+                read_data = reads_data[read_id]
+                norm_signal = self.normalize(read_data)
+
+                if self.trim_signal:
+                    trim, _ = self.trim(norm_signal[:8000])
+                    norm_signal = norm_signal[trim:]
+
+                chunks = self.chunk(norm_signal, self.window_size, self.window_overlap)
+                num_chunks = chunks.shape[0]
+                
+                uuid_fields = uuid.UUID(read_id).fields
+                id_arr = np.zeros((num_chunks, 6), dtype = np.int)
+                for i, uf in enumerate(uuid_fields):
+                    id_arr[:, i] = uf
+                
+                id_list.append(id_arr)
+                l_list.append(np.full((num_chunks,), len(norm_signal)))
+                chunks_list.append(chunks)
+        
+        out = {
+            'x': torch.vstack(chunks_list).squeeze(1), 
+            'id': np.vstack(id_list),
+            'len': np.concatenate(l_list)
+        }
+        return out
+
 
 class BaseBasecaller():
 
@@ -809,3 +1238,268 @@ class BaseBasecaller():
             direction = '+'
 
         return "".join(consensus), "".join(phredq_consensus), direction 
+
+class BasecallerCTC(BaseBasecaller):
+    """A base Basecaller class that is used to basecall complete reads
+    """
+    
+    def __init__(self, *args, **kwargs):
+        """
+        Args:
+            model (nn.Module): a model that has the following methods:
+                predict, decode
+            chunk_size (int): length of the chunks that a read will be divided into
+            overlap (int): amount of overlap between consecutive chunks
+            batch_size (int): batch size to forward through the network
+        """
+        super(BasecallerCTC, self).__init__(*args, **kwargs)
+
+
+    def decode_process(self, probs_stack, read_len, read_id):
+    
+        probs_stack = self.stitch_by_stride(
+            chunks = probs_stack, 
+            chunksize = self.chunksize, 
+            overlap = self.overlap, 
+            length = read_len, 
+            stride = self.stride, 
+            reverse = False,
+        )
+        probs_stack = probs_stack.unsqueeze(1)
+
+        if self.beam_size == 1:
+            greedy = True
+        else:
+            greedy = False
+
+        seq = self.model.decode(
+            probs_stack, 
+            greedy = greedy, 
+            qstring = True, 
+            collapse_repeats = True, 
+            return_path = True,
+            beam_size = self.beam_size,
+            beam_cut_threshold = self.beam_threshold,
+            read_len = read_len,
+            chunksize = self.chunksize, 
+            overlap = self.overlap, 
+            stride = self.stride
+        )
+
+        if isinstance(seq[0], tuple):
+
+            fastq_string = '@'+str(read_id)+'\n'
+            fastq_string += seq[0][0][:len(seq[0][1])] + '\n'
+            fastq_string += '+\n'
+            fastq_string += seq[0][0][len(seq[0][1]):] + '\n'
+        
+        else:
+
+            fastq_string = '@'+str(read_id)+'\n'
+            fastq_string += seq[0] + '\n'
+            fastq_string += '+\n'
+            fastq_string += '?'*len(seq[0]) + '\n'
+    
+        return fastq_string
+
+    def basecall(self, verbose = True):
+
+        # iterate over the data
+        for batch in tqdm(self.dataset, disable = not verbose):
+            
+            x = batch['x'].squeeze(0)
+            l = x.shape[0]
+            ss = torch.arange(0, l, self.batch_size)
+            nn = ss + self.batch_size
+
+            p_list = list()
+            for s, n in zip(ss, nn):
+                p = self.model.predict_step({'x':x[s:n, :]})
+                p_list.append(p)
+                
+            p = torch.hstack(p_list)
+
+            ids = batch['id'][0]
+            ids_arr = np.zeros((ids.shape[0], ), dtype = 'U36')
+            for i in range(ids.shape[0]):
+                ids_arr[i] = str(uuid.UUID(fields=ids[i].tolist()))
+
+
+            for read_id in np.unique(ids_arr):
+                w = np.where(ids_arr == read_id)[0]
+                read_stacks = p[:, w, :].permute(1, 0, 2)
+                read_len = batch['len'][0, w[0]].item()
+
+                fastq_string = self.decode_process(read_stacks, read_len, read_id)
+                with open(self.output_file, 'a') as f:
+                    f.write(str(fastq_string))
+                    f.flush()
+            
+
+        return None
+    
+
+
+class BasecallerCRF(BaseBasecaller):
+
+    def __init__(self, *args, **kwargs):
+        super(BasecallerCRF, self).__init__(*args, **kwargs)
+
+
+    def basecall(self, verbose = True, qscale = 1.0, qbias = 1.0):
+        # iterate over the data
+
+        assert self.dataset.dataset.buffer_size == 1
+        
+        for batch in tqdm(self.dataset, disable = not verbose):
+
+            ids = batch['id'].squeeze(0)
+            ids_arr = np.zeros((ids.shape[0], ), dtype = 'U36')
+            for i in range(ids.shape[0]):
+                ids_arr[i] = str(uuid.UUID(fields=ids[i].tolist()))
+
+            assert len(np.unique(ids_arr)) == 1
+            read_id = np.unique(ids_arr)[0]
+            
+            x = batch['x'].squeeze(0)
+            l = x.shape[0]
+            ss = torch.arange(0, l, self.batch_size)
+            nn = ss + self.batch_size
+
+            transition_scores = list()
+            for s, n in zip(ss, nn):
+                p = self.model.predict_step({'x':x[s:n, :]})
+                scores = self.model.compute_scores(p, use_fastctc=True)
+                transition_scores.append(scores[0].cpu())
+            init = scores[1][0, 0].cpu()
+
+            stacked_transitions = self.stitch_by_stride(
+                chunks = np.vstack(transition_scores), 
+                chunksize = self.chunksize, 
+                overlap = self.overlap, 
+                length = batch['len'].squeeze(0)[0].item(), 
+                stride = self.stride
+            )
+
+
+            if self.beam_size == 1:
+                seq, path = self.model._decode_crf_greedy_fastctc(
+                    tracebacks = stacked_transitions.numpy(), 
+                    init = init.numpy(), 
+                    qstring = True, 
+                    qscale = qscale, 
+                    qbias = qbias,
+                    return_path = True
+                )
+
+                fastq_string = '@'+str(read_id)+'\n'
+                fastq_string += seq[:len(path)] + '\n'
+                fastq_string += '+\n'
+                fastq_string += seq[len(path):] + '\n'
+                
+            else:
+                seq = self.model._decode_crf_beamsearch_fastctc(
+                    tracebacks = stacked_transitions.numpy(), 
+                    init = init.numpy(), 
+                    beam_size = self.beam_size, 
+                    beam_cut_threshold = self.beam_threshold, 
+                    return_path = False
+                )
+
+                fastq_string = '@'+str(read_id)+'\n'
+                fastq_string += seq + '\n'
+                fastq_string += '+\n'
+                fastq_string += '?'*len(seq) + '\n'
+            
+            with open(self.output_file, 'a') as f:
+                f.write(str(fastq_string))
+                f.flush()
+
+            
+class BasecallerSeq2Seq(BaseBasecaller):
+
+    def __init__(self, *args, **kwargs):
+        super(BasecallerSeq2Seq, self).__init__(*args, **kwargs)
+
+        if self.beam_size > 1:
+            raise NotImplementedError('No beam search yet, only greedy')
+
+    def basecall(self, verbose = True, qscale = 1.0, qbias = 1.0):
+
+        for batch in tqdm(self.dataset, disable = not verbose):
+            try:
+                with time_limit(seconds = 30):
+                    ids = batch['id'].squeeze(0)
+                    ids_arr = np.zeros((ids.shape[0], ), dtype = 'U36')
+                    for i in range(ids.shape[0]):
+                        ids_arr[i] = str(uuid.UUID(fields=ids[i].tolist()))
+
+                    assert len(np.unique(ids_arr)) == 1
+                    read_id = str(np.unique(ids_arr)[0])
+                    
+                    x = batch['x'].squeeze(0)
+                    l = x.shape[0]
+                    ss = torch.arange(0, l, self.batch_size)
+                    nn = ss + self.batch_size
+
+                    predictions = list()
+                    for s, n in zip(ss, nn):
+                        predictions.append(self.model.predict_step({'x':x[s:n, :]}))
+                    all_predictions = torch.cat(predictions, dim = 1).cpu()
+                    # calculate qscores as integers
+                    qscores = (torch.round(-10*(torch.log10(1 - all_predictions.exp().max(-1).values)) * qscale + qbias) + 33).permute(1, 0).numpy().astype(int)
+
+                    preds = self.model.decode(all_predictions, decoding_dict = RECURRENT_DECODING_DICT, greedy = True)
+
+                    # translate qscores to ascii characters
+                    qscores_list = list()
+                    for p, qscore in zip(preds, qscores):
+                        qscore_str = ""
+                        for q in qscore:
+                            # padding qscores are negative
+                            if q < 0:
+                                continue
+                            qscore_str += chr(q).encode('ascii').decode("ascii") 
+                        # cut qscores for predictions after stop token
+                        qscores_list.append(qscore_str[:len(p)])
+
+                    if self.overlap > 0:
+                        pred_seq, pred_phredq, direction = self.stich_by_alignment(preds, qscores_list)
+                    else:
+                        pred_seq = "".join(preds)
+                        pred_phredq = "".join(qscores_list)
+                        direction = '+'
+            except TimeoutException:
+                pred_seq = ''
+                pred_phredq = ''
+                direction = 'timeout'
+                
+            assert len(pred_seq) == len(pred_phredq)
+            fastq_string = '@'+str(read_id)+'\n'
+            fastq_string += pred_seq + '\n'
+            fastq_string += direction + "\n"
+            fastq_string += pred_phredq + '\n'
+
+            with open(self.output_file, 'a') as f:
+                f.write(str(fastq_string))
+                f.flush()
+                
+
+
+
+
+class BasecallerImpl(BasecallerCTC, BasecallerCRF, BasecallerSeq2Seq):
+
+    def __init__(self, *args, **kwargs):
+        super(BasecallerImpl, self).__init__(*args, **kwargs)
+
+    def basecall(self, verbose, *args, **kwargs):
+
+        if self.model.decoder_type == 'ctc':
+            return BasecallerCTC.basecall(self, verbose = verbose, *args, **kwargs)
+
+        if self.model.decoder_type == 'crf':
+            return BasecallerCRF.basecall(self, verbose = verbose, *args, **kwargs)
+
+        if self.model.decoder_type == 'seq2seq':
+            return BasecallerSeq2Seq.basecall(self, verbose = verbose, *args, **kwargs)
