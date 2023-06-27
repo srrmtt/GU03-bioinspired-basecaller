@@ -1,5 +1,5 @@
 torch
-fast_ctc_decode
+fast-ctc-decode
 h5py
 ipykernel
 mappy
