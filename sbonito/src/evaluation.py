@@ -2,8 +2,8 @@ import re
 import numpy as np
 from scipy.stats import mannwhitneyu
 
-from .constants import BASES, GLOBAL_ALIGN_FUNCTION, LOCAL_ALIGN_FUNCTION, MATRIX, ALIGNMENT_GAP_OPEN_PENALTY, ALIGNMENT_GAP_EXTEND_PENALTY
-from .utils import find_runs
+from constants import BASES, GLOBAL_ALIGN_FUNCTION, LOCAL_ALIGN_FUNCTION, MATRIX, ALIGNMENT_GAP_OPEN_PENALTY, ALIGNMENT_GAP_EXTEND_PENALTY
+from utils import find_runs
 
 REPORT_COLUMNS = ['read_id', # id of the read
                     'len_reference', # length of the reference

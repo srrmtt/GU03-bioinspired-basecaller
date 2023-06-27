@@ -10,7 +10,7 @@ from torch import nn
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
 from classes import BaseModelImpl
-from layers.bonito import BonitoLSTM, BonitoSLSTM
+from layers.bonito import BonitoLSTM
 
 
 class BonitoModel(BaseModelImpl):

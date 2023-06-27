@@ -7,7 +7,7 @@ import shutil
 
 from torch.optim import lr_scheduler
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../models')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from classes import BaseNanoporeDataset
 from s2sgridmodel import S2SGridAnalysisModel # pyright: reportMissingImports=false

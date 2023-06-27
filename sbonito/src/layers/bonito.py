@@ -38,24 +38,17 @@ class BonitoLSTM(nn.Module):
         if self.reverse: y = y.flip(0)
         return y
     
-import snntorch as snn
-    
+#import snntorch as snn
+"""    
 class BonitoSLSTM(nn.Module):
 
-    """Single LSTM RNN layer that can be reversed.
-    Useful to stack forward and reverse layers one after the other.
-    The default in pytorch is to have the forward and reverse in
-    parallel.
-    
-    Copied from https://github.com/nanoporetech/bonito
-    """
     def __init__(self, in_channels, out_channels, reverse = False):
-        """
+        
         Args:
             in_channels (int): number of input channels
             out_channels (int): number of output channels
             reverse (bool): whether to the rnn direction is reversed
-        """
+        
         super(BonitoLSTM, self).__init__()
         print("sto creando lo spiking lstm! ")
         
@@ -67,7 +60,9 @@ class BonitoSLSTM(nn.Module):
         y, h = self.rnn(x)
         if self.reverse: y = y.flip(0)
         return y
-    
+"""
+
+
 def get_stride(m):
     """Get the stride parameter if it has from a layer
     """
