@@ -58,7 +58,7 @@ if __name__ == "__main__":
         from halcyon.model import HalcyonModelS2S as Model# pyright: reportMissingImports=false
         args.model_stride = 1
     elif args.model == 'bonito':
-        from bonito.model import BonitoModel as Model# pyright: reportMissingImports=false
+        from model import BonitoModel as Model# pyright: reportMissingImports=false
     elif args.model == 'catcaller':
         from catcaller.model import CATCallerModel as Model# pyright: reportMissingImports=false
     elif args.model == 'causalcall':
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     )
     model = model.to(device)
 
-    model = model.to(device)
+    #model = model.to(device)
     model.load(checkpoint_file, initialize_lazy = True)
     model = model.to(device)
 
