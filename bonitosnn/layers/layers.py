@@ -9,6 +9,33 @@ import warnings
 
 import os
 import sys
+import snntorch as snn
+class BonitoSLSTM(nn.Module):
+   def __init__(self, in_channels, out_channels, reverse = False,threshold=1):
+        """
+        Args:
+            in_channels (int): number of input channels
+            out_channels (int): number of output channels
+            reverse (bool): whether to the rnn direction is reversed
+        """
+        super(BonitoSLSTM, self).__init__()
+        spike_grad_lstm = snn.surrogate.straight_through_estimator()
+
+
+        self.rnn =snn.SLSTM(in_channels,out_channels,spike_grad=spike_grad_lstm,threshold=threshold)
+        self.reverse = reverse  
+
+   def forward(self, x):
+        syn1, mem1 = self.slstm1.init_slstm()
+        if self.reverse: 
+            x = x.flip(0)
+            y, h = self.rnn(x,syn1,mem1)
+            
+        if self.reverse: 
+            y = y.flip(0)
+        return y
+            
+    
 
 class BonitoLSTM(nn.Module):
     """Single LSTM RNN layer that can be reversed.
