@@ -10,6 +10,8 @@ import warnings
 import os
 import sys
 import snntorch as snn
+from snntorch.surrogate import straight_through_estimator
+
 class BonitoSLSTM(nn.Module):
    def __init__(self, in_channels, out_channels, reverse = False,threshold=1):
         """
@@ -18,8 +20,9 @@ class BonitoSLSTM(nn.Module):
             out_channels (int): number of output channels
             reverse (bool): whether to the rnn direction is reversed
         """
+
         super(BonitoSLSTM, self).__init__()
-        spike_grad_lstm = snn.surrogate.straight_through_estimator()
+        spike_grad_lstm = straight_through_estimator()
 
 
         self.rnn =snn.SLSTM(in_channels,out_channels,spike_grad=spike_grad_lstm,threshold=threshold)
