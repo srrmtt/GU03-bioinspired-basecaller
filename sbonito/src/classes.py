@@ -17,7 +17,7 @@ from constants import CTC_BLANK, BASES_CRF, S2S_PAD, S2S_EOS, S2S_SOS, S2S_OUTPU
 from constants import CRF_STATE_LEN, CRF_BIAS, CRF_SCALE, CRF_BLANK_SCORE, CRF_N_BASE, BASES
 from constants import STICH_ALIGN_FUNCTION, STICH_GAP_OPEN_PENALTY, STICH_GAP_EXTEND_PENALTY, RECURRENT_DECODING_DICT, MATRIX
 
-from evaluation import alignment_accuracy, make_align_arr, elongate_cigar
+from base_evaluation import alignment_accuracy, make_align_arr, elongate_cigar  #file di basecalling, non nanopore
 
 from layers.bonito import CTC_CRF, BonitoLinearCRFDecoder
 
@@ -1626,6 +1626,7 @@ class BasecallerCRF(BaseBasecaller):
 
             assert len(np.unique(ids_arr)) == 1
             """
+            print("id modificato")
             read_id = batch['id'][0] #np.unique(ids_arr)[0]
             read_id=read_id.split("/")[-1]
             read_id=read_id.replace(".fast5","")

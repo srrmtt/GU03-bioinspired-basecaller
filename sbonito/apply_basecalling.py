@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import argparse
-from subprocess import Popen
+from subprocess import Popen,PIPE
 
 
 
@@ -29,6 +29,7 @@ if __name__ == '__main__':
         specie2.fastq
         ...
     """
+    process_handles=list()
     for specie_dir in os.listdir(args.dataset_dir)[0:5]:
         if specie_dir not in ["tmp", "genomes"]:
             #specie_dir=os.path.join(args.dataset_dir,specie_dir)
@@ -47,10 +48,11 @@ if __name__ == '__main__':
             +" --output-file "+os.path.join(args.output_dir,specie_dir+".fastq")+" --batch-size 8"  #per farlo entrare nella memoria locale
 
             print("current command: ", cmd_str)
-
-            #exit()
             
-            Popen([cmd_str], shell=True,
-                stdin=None, stdout=None, stderr=None, close_fds=True)
+            process_handles.append(Popen([cmd_str], shell=True,
+                stdin=None, stdout=PIPE, stderr=PIPE))
             
-            #exit()
+    for handle in process_handles:
+        (stdout_data, stderr_data)=handle.communicate()
+        print(stdout_data)
+        

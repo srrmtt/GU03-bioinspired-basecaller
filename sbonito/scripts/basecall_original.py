@@ -82,6 +82,7 @@ if __name__ == "__main__":
 
     #model = model.to(device)
     model.load(checkpoint_file, initialize_lazy = True)
+    print("decoder type: ", model.decoder_type)
     model = model.to(device)
 
     basecaller = BasecallerImpl(

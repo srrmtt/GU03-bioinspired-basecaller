@@ -9,7 +9,7 @@ import pandas as pd
 from pandas.errors import EmptyDataError
 
 from src.io import read_fast, find_files
-from src.nano_evaluation import eval_pair   #funzione eval_pair diversa da base_evaluation.eval_pair
+from src.nano_evaluation import eval_pair
 
 def results_queue_writer(output_file, q):
     
@@ -29,7 +29,7 @@ def results_queue_writer(output_file, q):
         df.to_csv(output_file, mode='a', header=header, index=False)
             
 
-def eval_pair_wrapper(reads_queue, writer_queue, tmp_dir, homopolymer_min_length, verbose):
+def eval_pair_wrapper(reads_queue, writer_queue, ref_fasta_file, homopolymer_min_length, verbose):
     """Wrapper evaluate a prediction in the queue
     Args:
         references (dict): dictionary with reference sequences
@@ -38,10 +38,12 @@ def eval_pair_wrapper(reads_queue, writer_queue, tmp_dir, homopolymer_min_length
         verbose (bool): whether to print the read_id being processed
     """
     
+    ref = mappy.Aligner(ref_fasta_file) 
+
     while not reads_queue.empty():
 
         data = reads_queue.get()
-        read_id, reference, prediction = data
+        read_id, prediction = data
 
         if verbose:
             print(read_id)
@@ -54,13 +56,6 @@ def eval_pair_wrapper(reads_queue, writer_queue, tmp_dir, homopolymer_min_length
             pred = prediction
             phredq = None
             comment = None
-            
-        tmp_fasta = os.path.join(tmp_dir, read_id + '.fasta')
-        with open(tmp_fasta, 'w') as f:
-            f.write('>'+read_id+'\n')
-            f.write(reference+'\n')
-
-        ref = mappy.Aligner(tmp_fasta) 
 
         result = eval_pair(
             ref = ref, 
@@ -69,11 +64,10 @@ def eval_pair_wrapper(reads_queue, writer_queue, tmp_dir, homopolymer_min_length
             homopolymer_min_length = homopolymer_min_length,
             phredq = phredq, 
             comment = comment,
+            reference_genome = True,
         )
         
         writer_queue.put(result)
-
-        os.remove(tmp_fasta)
 
     return None
 
@@ -132,11 +126,6 @@ if __name__ == "__main__":
         with open(output_file, 'w') as f:
             f.write('#'+args.model_name+'\n')
 
-
-    # read all the reference sequences into memory
-    print('Reading references: ' + args.references_path)
-    references = read_fast(os.path.abspath(args.references_path))
-
     # start multiprocessing manager and queues for reading and writing
     manager = mp.Manager() 
     writer_queue = manager.Queue()
@@ -148,16 +137,11 @@ if __name__ == "__main__":
         for read_id, basecalls in read_fast(basecalls_file).items():
             if read_id in processed_ids:
                 continue
-            try:
-                reads_queue.put((read_id, references[read_id], basecalls))
-            except KeyError:
-                print('Not found in references: ' + read_id)
-                continue
-
+            reads_queue.put((read_id, basecalls))
   
     with mp.Pool(processes=args.processes-1) as pool:
        
-       multiple_results = [pool.apply_async(eval_pair_wrapper, (reads_queue, writer_queue, tmp_path, args.homopolymer_length, args.verbose)) for _ in range(args.processes-1)]
+       multiple_results = [pool.apply_async(eval_pair_wrapper, (reads_queue, writer_queue, args.reference_path, args.homopolymer_length, args.verbose)) for _ in range(args.processes-1)]
        results = [res.get() for res in multiple_results]
                     
     writer_queue.put('kill')
