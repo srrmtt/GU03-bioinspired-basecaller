@@ -7,7 +7,9 @@ import matplotlib.cbook as cbook
 from scipy.optimize import brentq
 from sklearn.neighbors import KernelDensity
 
-from constants import BASES, AUC_STEP
+#from constants import BASES, AUC_STEP
+BASES = ['A', 'C', 'G', 'T']
+AUC_STEP = 10
 
 class EvaluationReport():
 

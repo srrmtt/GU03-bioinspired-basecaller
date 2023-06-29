@@ -1626,7 +1626,7 @@ class BasecallerCRF(BaseBasecaller):
 
             assert len(np.unique(ids_arr)) == 1
             """
-            print("id modificato")
+            #print("id modificato")
             read_id = batch['id'][0] #np.unique(ids_arr)[0]
             read_id=read_id.split("/")[-1]
             read_id=read_id.replace(".fast5","")
