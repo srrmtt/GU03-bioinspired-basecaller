@@ -165,7 +165,7 @@ try:
             Ms = scores.reshape(T, N, -1, len(self.alphabet))
             alpha_0 = Ms.new_full((N, self.n_base**(self.state_len)), S.one)
             beta_T = Ms.new_full((N, self.n_base**(self.state_len)), S.one)
-            return seqdist.sparse.logZ(Ms, self.idx, alpha_0, beta_T, S)
+            return  logZ_cu_sparse(Ms, self.idx, alpha_0, beta_T, S) 
 
         def normalise(self, scores):
             return (scores - self.logZ(scores)[:, None] / len(scores))
@@ -174,13 +174,13 @@ try:
             T, N, _ = scores.shape
             Ms = scores.reshape(T, N, -1, self.n_base + 1)
             alpha_0 = Ms.new_full((N, self.n_base**(self.state_len)), S.one)
-            return seqdist.sparse.fwd_scores_cupy(Ms, self.idx, alpha_0, S, K=1)
+            return logZ_cu_sparse.sparse.fwd_scores_cupy(Ms, self.idx, alpha_0, S, K=1)
 
         def backward_scores(self, scores, S: semiring=Log):
             T, N, _ = scores.shape
             Ms = scores.reshape(T, N, -1, self.n_base + 1)
             beta_T = Ms.new_full((N, self.n_base**(self.state_len)), S.one)
-            return seqdist.sparse.bwd_scores_cupy(Ms, self.idx, beta_T, S, K=1)
+            return logZ_cu_sparse.sparse.bwd_scores_cupy(Ms, self.idx, beta_T, S, K=1)
 
         def compute_transition_probs(self, scores, betas):
             T, N, C = scores.shape
@@ -241,7 +241,7 @@ try:
             if normalise_scores:
                 scores = self.normalise(scores)
             stay_scores, move_scores = self.prepare_ctc_scores(scores, targets)
-            logz = logZ_cupy(stay_scores, move_scores, target_lengths + 1 - self.state_len)
+            logz = logZ_cu(stay_scores, move_scores, target_lengths + 1 - self.state_len)
             loss = - (logz / target_lengths)
             if loss_clip:
                 loss = torch.clamp(loss, 0.0, loss_clip)
