@@ -30,9 +30,7 @@ if __name__ == '__main__':
             ref_path=os.path.join(specie_dir,"read_references.fasta")
 
             if not os.path.exists(ref_path):
-                ref_path=os.path.join(args.dataset_dir,'genomes/'+specie_name+".fna")
-            else:
-                continue
+                ref_path=os.path.join(args.dataset_dir,'genomes/'+specie_name+"_reference.fna")
 
             cmd_str="tombo resquiggle "+os.path.join(specie_dir,"fast5")+" "\
             +ref_path\
@@ -43,14 +41,17 @@ if __name__ == '__main__':
             
             #run([cmd_str])
             os.system(cmd_str)
-            #process_handles.append(Popen([cmd_str], shell=True,stdin=None, stdout=PIPE, stderr=PIPE, close_fds=False))
             """
+            process_handles.append(Popen([cmd_str], shell=True,stdin=None, stdout=PIPE, stderr=PIPE, close_fds=True))
+            
             if (i+1)%args.processes==0:         
                 for j,handle in enumerate(process_handles):
                     print("\ncurrent command: ",cmds[j],"\n")
-                    (stdout_data, stderr_data)=handle.communicate()
-                    print(stdout_data)
+                    stdout_data=handle.stdout.read()
+                    std_err=handle.stderr.read()
+                    print("output:\n",stdout_data,std_err)
                 process_handles.clear()
                 cmds.clear()
             """
+            
          
