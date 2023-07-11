@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import argparse
-from subprocess import Popen,run
+from subprocess import Popen,run,PIPE
 import time
 
 
@@ -10,6 +10,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", type=str, help='dataset, structured as wick')
+    parser.add_argument("--processes", type=int, help='number of workers at each time')
     args = parser.parse_args()
     """
     dataset_dir
@@ -25,8 +26,13 @@ if __name__ == '__main__':
 
             specie_dir=os.path.join(args.dataset_dir,specie_dir)
 
+            ref_path=os.path.join(specie_dir,"read_references.fasta")
+
+            if not os.path.exists(ref_path):
+                ref_path=os.path.join(args.dataset_dir,'genomes/'+specie_dir+".fna")
+
             cmd_str="tombo resquiggle "+os.path.join(specie_dir,"fast5")+" "\
-            +os.path.join(specie_dir,"read_references.fasta")\
+            +ref_path\
             +" --processes 2 --dna --num-most-common-errors 5 --ignore-read-locks --overwrite"
 
             print("\n\ncurrent command:\n\n",i," ",cmd_str)
@@ -40,9 +46,10 @@ if __name__ == '__main__':
                             "--overwrite" ])
             """
             #run([cmd_str])
-            process_handles.append(Popen([cmd_str], shell=True,stdin=None, stdout=None, stderr=None, close_fds=True))
-            
-    for handle in process_handles:
-        (stdout_data, stderr_data)=handle.communicate()
-        print(stdout_data)
+            process_handles.append(Popen([cmd_str], shell=True,stdin=None, stdout=PIPE, stderr=None, close_fds=False))
+
+            if i%args.processes==0:         
+                for handle in process_handles:
+                    (stdout_data, stderr_data)=handle.communicate()
+                    print(stdout_data)
          

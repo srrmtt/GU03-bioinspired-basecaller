@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["--data-dir","/root/Acinetobacter_baumannii_AYP-A2/train_numpy",
+            "--output-dir","/root/Acinetobacter_baumannii_AYP-A2/alreadytrained1",
+            "--model","bonito",
+            "--window-size","2000","--batch-size","4","--starting-lr","0",
+            "--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt"]  //"--use-scaler"
+        }
+    ]
+}
