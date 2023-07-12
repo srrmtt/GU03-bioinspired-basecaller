@@ -13,7 +13,7 @@ import snntorch as snn
 from snntorch.surrogate import straight_through_estimator
 
 class BonitoSLSTM(nn.Module):
-   def __init__(self, in_channels, out_channels, reverse = False,threshold=1):
+   def __init__(self, in_channels, out_channels, reverse = False,threshold=0.05):
         """
         Args:
             in_channels (int): number of input channels
@@ -39,7 +39,7 @@ class BonitoSLSTM(nn.Module):
             lstm_out.append(curr_y)
         #y, syn, mem = self.rnn(x,syn1,mem1)
         y=torch.stack(lstm_out)
-            
+        #[curr_y, syn, mem = self.rnn(x_step,syn,mem) for x_step in x]
         if self.reverse: 
             y = y.flip(0)
         return y

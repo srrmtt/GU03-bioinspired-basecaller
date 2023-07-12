@@ -26,7 +26,8 @@ if __name__ == "__main__":
         'urnano',
         'halcyon',
     ], required = True)
-    parser.add_argument("--fast5-dir", type=str, required = True)
+    parser.add_argument("--fast5-dir", type=str, required = False)
+    parser.add_argument("--fast5-list", type=str, required = False)
     parser.add_argument("--checkpoint", type=str, help='checkpoint file to load model weights', required = True)
     parser.add_argument("--output-file", type=str, help='output fastq file', required = True)
     parser.add_argument("--chunk-size", type=int, default = 2000)
@@ -40,9 +41,16 @@ if __name__ == "__main__":
 
 
     file_list = list()
-    for f in os.listdir(args.fast5_dir):
-        if f.endswith('.fast5'):
-            file_list.append(os.path.join(args.fast5_dir, f))
+    if args.fast5_dir is not None:
+        for f in os.listdir(args.fast5_dir):
+            if f.endswith('.fast5'):
+                file_list.append(os.path.join(args.fast5_dir, f))
+    elif args.fast5_list is not None:
+        with open(args.fast5_list, 'r') as f:
+            for line in f:
+                file_list.append(line.strip('\n'))
+    else:
+        raise ValueError('Either --fast5-dir or --fast5-list must be given')
 
     fast5_dataset = BaseFast5Dataset(fast5_list= file_list, buffer_size = 1)
 

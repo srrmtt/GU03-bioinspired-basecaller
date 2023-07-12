@@ -5,16 +5,35 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "basecall_original.py",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--data-dir","/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
-            "--output-dir","./test_res_snn2",
-            "--model","bonitosnn",
-            "--window-size","2000","--batch-size","4","--overwrite"]//"--starting-lr","0",
+            "args": [
+                "--model","bonito",
+                "--chunk-size","4",
+                "--fast5-list","./inter_task_test_reads.txt",
+                "--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt",
+                "--output-file","inter_test_basecalls.fastq"
+            ]
+        },
+        {
+            "name": "train_original.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data-dir", "/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
+                "--output-dir", "./test_res_snn4",
+                "--model", "bonitosnn",
+                "--window-size", "2000",
+                "--batch-size", "4",
+                //"--overwrite"
+            ] //"--starting-lr","0",
             //"--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt"]  //"--use-scaler"
         }
     ]
