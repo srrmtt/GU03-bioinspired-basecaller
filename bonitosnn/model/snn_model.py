@@ -41,9 +41,17 @@ class BonitoSNNModel(BaseModelImpl):
         """
         
         x = self.convolution(x)
-        x = x.permute(2, 0, 1) # [len, batch, channels]
+        #x = x.permute(2, 0, 1) # [len, batch, channels] #shape[batch_size,400,384]
+        
+        batch_size=x.shape[0]
+        x = x.reshape(batch_size,-1) #shape[batch_size,153600]
+
         x = self.encoder(x)
+
+        x.reshape(batch_size,-1,384)
+        
         x = self.decoder(x)
+
         return x
 
     def build_cnn(self):
@@ -79,11 +87,11 @@ class BonitoSNNModel(BaseModelImpl):
     def build_encoder(self, input_size, reverse):
 
         if reverse:
-            encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = True),
-                                    BonitoSLSTM(384, 384, reverse = False),
-                                    BonitoSLSTM(384, 384, reverse = True),
-                                    BonitoSLSTM(384, 384, reverse = False),
-                                    BonitoSLSTM(384, 384, reverse = True))
+            encoder = nn.Sequential(BonitoSLSTM(input_size, 400*384, reverse = True),
+                                    BonitoSLSTM(400*384, 400*384, reverse = False),
+                                    BonitoSLSTM(400*384, 400*384, reverse = True),
+                                    BonitoSLSTM(400*384, 400*384, reverse = False),
+                                    BonitoSLSTM(400*384, 400*384, reverse = True))
         else:
             encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = False),
                                     BonitoSLSTM(384, 384, reverse = True),
@@ -109,6 +117,6 @@ class BonitoSNNModel(BaseModelImpl):
 
         self.convolution = self.build_cnn()
         self.cnn_stride = self.get_defaults()['cnn_stride']
-        self.encoder = self.build_encoder(input_size = 384, reverse = True)
+        self.encoder = self.build_encoder(input_size = 400*384, reverse = True)
         self.decoder = self.build_decoder(encoder_output_size = 384, decoder_type = 'crf')
         self.decoder_type = 'crf'

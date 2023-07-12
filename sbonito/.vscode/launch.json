@@ -11,11 +11,11 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--data-dir","/root/Acinetobacter_baumannii_AYP-A2/train_numpy",
-            "--output-dir","/root/Acinetobacter_baumannii_AYP-A2/alreadytrained1",
-            "--model","bonito",
-            "--window-size","2000","--batch-size","4","--starting-lr","0",
-            "--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt"]  //"--use-scaler"
+            "args": ["--data-dir","/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
+            "--output-dir","./test_res_snn",
+            "--model","bonitosnn",
+            "--window-size","2000","--batch-size","4",]//"--starting-lr","0",
+            //"--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt"]  //"--use-scaler"
         }
     ]
 }

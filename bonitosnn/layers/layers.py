@@ -29,10 +29,11 @@ class BonitoSLSTM(nn.Module):
         self.reverse = reverse  
 
    def forward(self, x):
-        syn1, mem1 = self.slstm1.init_slstm()
+        syn1, mem1 = self.rnn.init_slstm()
         if self.reverse: 
             x = x.flip(0)
-            y, h = self.rnn(x,syn1,mem1)
+        
+        y, syn2, mem2 = self.rnn(x,syn1,mem1)
             
         if self.reverse: 
             y = y.flip(0)

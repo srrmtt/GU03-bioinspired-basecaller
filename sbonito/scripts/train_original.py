@@ -6,8 +6,10 @@ import sys
 import shutil
 
 from torch.optim import lr_scheduler
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../bonito')))
+
 
 from classes import BaseNanoporeDataset
 from schedulers import GradualWarmupScheduler
@@ -60,6 +62,7 @@ if __name__ == '__main__':
         'sacall',
         'urnano',
         'halcyon',
+        'bonitosnn'
     ], help='Model')
     parser.add_argument("--window-size", type=int, choices=[400, 1000, 2000, 4000], help='Window size for the data')
     parser.add_argument("--num-epochs", type=int, default = 5)
@@ -97,6 +100,8 @@ if __name__ == '__main__':
             from sacall.model import SACallModel as Model # pyright: reportMissingImports=false
         elif args.model == 'urnano':
             from urnano.model import URNanoModel as Model # pyright: reportMissingImports=false
+        elif args.model == 'bonitosnn':
+            from bonitosnn.model.snn_model import BonitoSNNModel as Model # pyright: reportMissingImports=false
         
     print('Creating dataset')
     dataset = BaseNanoporeDataset(
