@@ -8,6 +8,8 @@ import os
 import sys
 from torch import nn
 
+import torch
+
 from bonitosnn.classes import BaseModelImpl
 from bonitosnn.layers import BonitoSLSTM
 
@@ -39,16 +41,25 @@ class BonitoSNNModel(BaseModelImpl):
         Args:
             x (tensor) : [batch, channels (1), len]
         """
-        
+        #x.shape: [batch_size,1,2000]
+
         x = self.convolution(x)
-        #x = x.permute(2, 0, 1) # [len, batch, channels] #shape[batch_size,400,384]
+        #x.shape: [batch_size,384,400]
+
+        x = x.permute(2, 0, 1) # [len, batch, channels] [400,batch_size,384]
         
-        batch_size=x.shape[0]
-        x = x.reshape(batch_size,-1) #shape[batch_size,153600]
+        #batch_size=x.shape[1]
+        #x = x.reshape(batch_size,-1) #shape[batch_size,153600]
+        """
+        lstm_out=[]
+        for x_step in x[:,:,:]:
+            curr_x = self.encoder(x_step)
+            lstm_out.append(curr_x)
 
+        #x.reshape(batch_size,-1,384)
+        x=torch.stack(lstm_out)
+        """
         x = self.encoder(x)
-
-        x.reshape(batch_size,-1,384)
 
         x = self.decoder(x)
 
@@ -117,6 +128,6 @@ class BonitoSNNModel(BaseModelImpl):
 
         self.convolution = self.build_cnn()
         self.cnn_stride = self.get_defaults()['cnn_stride']
-        self.encoder = self.build_encoder(input_size = 400*384, reverse = True)
+        self.encoder = self.build_encoder(input_size = 384, reverse = True)
         self.decoder = self.build_decoder(encoder_output_size = 384, decoder_type = 'crf')
         self.decoder_type = 'crf'
