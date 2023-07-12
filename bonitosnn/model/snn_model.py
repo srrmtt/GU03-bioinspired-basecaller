@@ -49,7 +49,7 @@ class BonitoSNNModel(BaseModelImpl):
         x = self.encoder(x)
 
         x.reshape(batch_size,-1,384)
-        
+
         x = self.decoder(x)
 
         return x
@@ -87,11 +87,11 @@ class BonitoSNNModel(BaseModelImpl):
     def build_encoder(self, input_size, reverse):
 
         if reverse:
-            encoder = nn.Sequential(BonitoSLSTM(input_size, 400*384, reverse = True),
-                                    BonitoSLSTM(400*384, 400*384, reverse = False),
-                                    BonitoSLSTM(400*384, 400*384, reverse = True),
-                                    BonitoSLSTM(400*384, 400*384, reverse = False),
-                                    BonitoSLSTM(400*384, 400*384, reverse = True))
+            encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = True),
+                                    BonitoSLSTM(384, 384, reverse = False),
+                                    BonitoSLSTM(384, 384, reverse = True),
+                                    BonitoSLSTM(384, 384, reverse = False),
+                                    BonitoSLSTM(384, 384, reverse = True))
         else:
             encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = False),
                                     BonitoSLSTM(384, 384, reverse = True),
