@@ -1242,6 +1242,9 @@ class BaseFast5Dataset(Dataset):
         l_list = list()
 
         for read_file in read_list:
+            if not os.path.exists(read_file):
+                print("file: ",read_file," not found!")
+                continue
             reads_data = read_fast5(read_file)
 
             for read_id in reads_data.keys():
