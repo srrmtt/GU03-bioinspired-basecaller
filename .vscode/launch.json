@@ -12,10 +12,10 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--model","bonito",
-                "--chunk-size","2",
+                "--model","bonitosnn",
+                "--chunk-size","4",
                 "--fast5-list","./sbonito/inter_task_test_reads.txt",
-                "--checkpoint","./sbonito/trained/bonito_trained/inter_2000/checkpoint.pt",
+                "--checkpoint","./sbonito/trained/bonitosnn_trained/checkpoint_43546.pt",
                 "--output-file","./sbonito/inter_test_basecalls.fastq"
             ]
         },

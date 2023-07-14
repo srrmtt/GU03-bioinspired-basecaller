@@ -2,6 +2,7 @@
 
 import os
 import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../bonito'))) # eliminato cartella models, ci serve solo bonito
 import argparse
@@ -25,6 +26,7 @@ if __name__ == "__main__":
         'sacall',
         'urnano',
         'halcyon',
+        'bonitosnn'
     ], required = True)
     parser.add_argument("--fast5-dir", type=str, required = False)
     parser.add_argument("--fast5-list", type=str, required = False)
@@ -77,6 +79,8 @@ if __name__ == "__main__":
         from sacall.model import SACallModel as Model # pyright: reportMissingImports=false
     elif args.model == 'urnano':
         from urnano.model import URNanoModel as Model # pyright: reportMissingImports=false
+    elif args.model == 'bonitosnn':
+        from bonitosnn.model import BonitoSNNModel as Model # pyright: reportMissingImports=false
 
     model = Model(
         load_default = True,
