@@ -9,6 +9,8 @@ import sys
 from torch import nn
 
 import torch
+import snntorch as snn
+from snntorch import surrogate,utils
 
 from bonitosnn.classes import BaseModelImpl
 from bonitosnn.layers import BonitoSLSTM
@@ -17,7 +19,7 @@ from bonitosnn.layers import BonitoSLSTM
 class BonitoSNNModel(BaseModelImpl):
     """Bonito Model
     """
-    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False, *args, **kwargs):
+    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False,slstm_threshold=0.05, *args, **kwargs):
         super(BonitoSNNModel, self).__init__(*args, **kwargs)
         """
         Args:
@@ -31,6 +33,9 @@ class BonitoSNNModel(BaseModelImpl):
         self.encoder = encoder
         self.decoder = decoder
         self.reverse = reverse
+
+        #iperparametri
+        self.slstm_threshold=slstm_threshold
         
         if load_default:
             self.load_default_configuration()
@@ -48,17 +53,6 @@ class BonitoSNNModel(BaseModelImpl):
 
         x = x.permute(2, 0, 1) # [len, batch, channels] [400,batch_size,384]
         
-        #batch_size=x.shape[1]
-        #x = x.reshape(batch_size,-1) #shape[batch_size,153600]
-        """
-        lstm_out=[]
-        for x_step in x[:,:,:]:
-            curr_x = self.encoder(x_step)
-            lstm_out.append(curr_x)
-
-        #x.reshape(batch_size,-1,384)
-        x=torch.stack(lstm_out)
-        """
         x = self.encoder(x)
 
         x = self.decoder(x)
@@ -98,17 +92,17 @@ class BonitoSNNModel(BaseModelImpl):
     def build_encoder(self, input_size, reverse):
 
         if reverse:
-            encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = True),
-                                    BonitoSLSTM(384, 384, reverse = False),
-                                    BonitoSLSTM(384, 384, reverse = True),
-                                    BonitoSLSTM(384, 384, reverse = False),
-                                    BonitoSLSTM(384, 384, reverse = True))
+            encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = True,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
         else:
-            encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = False),
-                                    BonitoSLSTM(384, 384, reverse = True),
-                                    BonitoSLSTM(384, 384, reverse = False),
-                                    BonitoSLSTM(384, 384, reverse = True),
-                                    BonitoSLSTM(384, 384, reverse = False))
+            encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = False,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
+                                    BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
         return encoder    
 
     def get_defaults(self):
@@ -131,3 +125,62 @@ class BonitoSNNModel(BaseModelImpl):
         self.encoder = self.build_encoder(input_size = 384, reverse = True)
         self.decoder = self.build_decoder(encoder_output_size = 384, decoder_type = 'crf')
         self.decoder_type = 'crf'
+
+class BonitoSpikeConv(BonitoSNNModel):
+    def __init__(self, convolution=None, encoder=None, decoder=None, reverse=True, load_default=False,slstm_threshold=0.05,conv_threshold=0.05, *args, **kwargs):
+        super().__init__(convolution, encoder, decoder, reverse, load_default,slstm_threshold, *args, **kwargs)
+        self.convolution=self.build_spike_conv(conv_threshold) #build_spike_conv() #build_cnn()
+
+    def build_spike_conv(self,conv_threshold):
+        
+        class spikeconv(nn.Module):
+            def __init__(self,conv_th=0.05):
+                super(spikeconv, self).__init__()
+                beta = 0.8  # neuron decay rate  #GROUPS : A: [0.7], B: [0.8], C: [0.85], D: [0.9 - 1]
+                grad = surrogate.straight_through_estimator()
+                
+                self.neuron1=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+                self.neuron2=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+                self.neuron3=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+
+                """
+                self.lin1=nn.Linear(1,4)
+                self.lin2=nn.Linear(4,16)
+                self.lin3=nn.Linear(16,384)
+                """
+                #self.lin4=nn.Linear(2000,400)
+                #self.net= nn.Sequential(nn.Linear(1,4),self.neuron1,nn.Linear(4,16),self.neuron2,nn.Linear(16,384),self.neuron3)
+                
+                self.cnet=nn.Sequential(
+                                nn.Conv1d(in_channels = 1, out_channels = 4, kernel_size = 5, stride= 1, padding=5//2, bias=True),
+                                self.neuron1,
+                                nn.Conv1d(in_channels = 4, out_channels = 16, kernel_size = 5, stride= 1, padding=5//2, bias=True),
+                                self.neuron2,
+                                nn.Conv1d(in_channels = 16, out_channels = 384, kernel_size = 19, stride= 5, padding=19//2, bias=True),
+                                self.neuron3 #nn.SiLU()
+                            )
+
+            def forward(self, x):
+                #mem1 = self.neuron1.init_leaky() #non necessario se init_hidden True
+                
+                #utils.reset(self.net)
+                utils.reset(self.cnet)
+                self.cnet.train()
+                """
+                spike_recording = []
+                for x_step in x.permute(2,0,1):  #layer lineari lavorano sull'ultima dimensione
+                    spike_recording.append(self.net(x_step))
+
+                #spike_recording = []
+                #for x_step in x:
+                #    spike_recording.append(self.cnet(x_step))
+                #x=torch.stack(spike_recording)
+
+                #x=self.net(x.permute(2,0,1))
+                #x=self.conv1(x.permute(1,2,0))
+                #x=self.lin4(x.permute(1,2,0))  #self.neuron4(
+                """
+                return self.cnet(x)
+                
+        return spikeconv(conv_threshold)
+    

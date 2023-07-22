@@ -34,7 +34,7 @@ class BonitoSLSTM(nn.Module):
             x = x.flip(0)
         
         lstm_out=[]
-        for x_step in x[:,:,:]:
+        for x_step in x:
             curr_y, syn, mem = self.rnn(x_step,syn,mem)
             lstm_out.append(curr_y)
         #y, syn, mem = self.rnn(x,syn1,mem1)

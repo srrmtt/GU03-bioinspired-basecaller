@@ -62,7 +62,8 @@ if __name__ == '__main__':
         'sacall',
         'urnano',
         'halcyon',
-        'bonitosnn'
+        'bonitosnn',
+        'bonitospikeconv'
     ], help='Model')
     parser.add_argument("--window-size", type=int, choices=[400, 1000, 2000, 4000], help='Window size for the data')
     parser.add_argument("--num-epochs", type=int, default = 5)
@@ -74,7 +75,7 @@ if __name__ == '__main__':
     parser.add_argument("--checkpoint", type=str, help='checkpoint file to resume training')
     args = parser.parse_args()
     
-    validate_every = 500
+    validate_every = 100
     checkpoint_every = 20000
 
     data_dir = args.data_dir
@@ -102,6 +103,8 @@ if __name__ == '__main__':
             from urnano.model import URNanoModel as Model # pyright: reportMissingImports=false
         elif args.model == 'bonitosnn':
             from bonitosnn.model.snn_model import BonitoSNNModel as Model # pyright: reportMissingImports=false
+        elif args.model == 'bonitospikeconv':
+            from bonitosnn.model.snn_model import BonitoSpikeConv as Model # pyright: reportMissingImports=false
         
     print('Creating dataset')
     dataset = BaseNanoporeDataset(

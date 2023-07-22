@@ -28,12 +28,14 @@
             "justMyCode": true,
             "args": [
                 "--data-dir", "/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
-                "--output-dir", "./sbonito/test_res_snn_fast",
-                "--model", "bonitosnn",
+                "--output-dir", "./sbonito/test_res_spike_conv40",
+                "--model", "bonitospikeconv",
                 "--window-size", "2000",
                 "--batch-size", "4",
+                //"--starting-lr","0.00002",
+                //"--warmup-steps","0",
                 //"--overwrite"
-            ] //"--starting-lr","0",
+            ] //"--starting-lr","0.00002",
             //"--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt"]  //"--use-scaler"
         }
     ]
