@@ -80,31 +80,23 @@ if __name__ == '__main__':
 
     data_dir = args.data_dir
 
+    """
     if args.model == 'halcyon':
-        from halcyon.model import HalcyonModelS2S as Model # pyright: reportMissingImports=false
+        from halcyon.model import HalcyonModelS2S as Model 
         decoding_dict = RECURRENT_DECODING_DICT
         encoding_dict = RECURRENT_ENCODING_DICT
         s2s = True
     else:
-        decoding_dict = NON_RECURRENT_DECODING_DICT
-        encoding_dict = NON_RECURRENT_ENCODING_DICT
-        s2s = False
-        if args.model == 'bonito':
-            from bonito.model import BonitoModel as Model# pyright: reportMissingImports=false
-        elif args.model == 'catcaller':
-            from catcaller.model import CATCallerModel as Model# pyright: reportMissingImports=false
-        elif args.model == 'causalcall':
-            from causalcall.model import CausalCallModel as Model # pyright: reportMissingImports=false
-        elif args.model == 'mincall':
-            from mincall.model import MinCallModel as Model # pyright: reportMissingImports=false
-        elif args.model == 'sacall':
-            from sacall.model import SACallModel as Model # pyright: reportMissingImports=false
-        elif args.model == 'urnano':
-            from urnano.model import URNanoModel as Model # pyright: reportMissingImports=false
-        elif args.model == 'bonitosnn':
-            from bonitosnn.model.snn_model import BonitoSNNModel as Model # pyright: reportMissingImports=false
-        elif args.model == 'bonitospikeconv':
-            from bonitosnn.model.snn_model import BonitoSpikeConv as Model # pyright: reportMissingImports=false
+    """
+    decoding_dict = NON_RECURRENT_DECODING_DICT
+    encoding_dict = NON_RECURRENT_ENCODING_DICT
+    s2s = False
+    if args.model == 'bonito':
+        from bonito.model import BonitoModel as Model 
+    elif args.model == 'bonitosnn':
+        from bonitosnn.model.snn_model import BonitoSNNModel as Model 
+    elif args.model == 'bonitospikeconv':
+        from bonitosnn.model.snn_model import BonitoSpikeConv as Model 
         
     print('Creating dataset')
     dataset = BaseNanoporeDataset(

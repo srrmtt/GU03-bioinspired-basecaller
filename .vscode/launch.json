@@ -37,6 +37,17 @@
                 //"--overwrite"
             ] //"--starting-lr","0.00002",
             //"--checkpoint","./trained/bonito_trained/inter_2000/checkpoint.pt"]  //"--use-scaler"
+        },
+        {
+            "name": "plot_train_log.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--log-file","../logs/trained_model3.log",
+            ]
         }
     ]
 }
