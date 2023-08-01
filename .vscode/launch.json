@@ -47,6 +47,7 @@
             "justMyCode": true,
             "args": [
                 "--log-file","../logs/trained_model3.log",
+                "--output-img","../logs/trained_model3.svg",
             ]
         }
     ]

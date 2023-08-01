@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--log-file", type=str, help='Path of the log file')
+    parser.add_argument("--output-img", type=str, help='Path of the output svg image')
     args = parser.parse_args()
 
     with open(args.log_file) as logfile:
@@ -46,7 +47,7 @@ def main():
         
         #plt.show()
         plt.tight_layout()
-        plt.savefig("plot_trained_model_3.svg",format='svg')
+        plt.savefig(args.output_img,format='svg')
 
 
 
