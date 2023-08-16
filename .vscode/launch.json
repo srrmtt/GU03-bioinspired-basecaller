@@ -28,8 +28,8 @@
             "justMyCode": true,
             "args": [
                 "--data-dir", "/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
-                "--output-dir", "./sbonito/test_res_spike_conv40",
-                "--model", "bonitospikeconv",
+                "--output-dir", "./sbonito/test_res_spike_lin_0",
+                "--model", "bonitospikelin",
                 "--window-size", "2000",
                 "--batch-size", "4",
                 //"--starting-lr","0.00002",

@@ -20,10 +20,8 @@ class BonitoSLSTM(nn.Module):
             out_channels (int): number of output channels
             reverse (bool): whether to the rnn direction is reversed
         """
-
         super(BonitoSLSTM, self).__init__()
         spike_grad_lstm = straight_through_estimator()
-
 
         self.rnn =snn.SLSTM(in_channels,out_channels,spike_grad=spike_grad_lstm,threshold=threshold)
         self.reverse = reverse  
@@ -37,9 +35,8 @@ class BonitoSLSTM(nn.Module):
         for x_step in x:
             curr_y, syn, mem = self.rnn(x_step,syn,mem)
             lstm_out.append(curr_y)
-        #y, syn, mem = self.rnn(x,syn1,mem1)
         y=torch.stack(lstm_out)
-        #[curr_y, syn, mem = self.rnn(x_step,syn,mem) for x_step in x]
+
         if self.reverse: 
             y = y.flip(0)
         return y

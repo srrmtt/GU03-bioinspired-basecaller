@@ -63,7 +63,8 @@ if __name__ == '__main__':
         'urnano',
         'halcyon',
         'bonitosnn',
-        'bonitospikeconv'
+        'bonitospikeconv',
+        'bonitospikelin'
     ], help='Model')
     parser.add_argument("--window-size", type=int, choices=[400, 1000, 2000, 4000], help='Window size for the data')
     parser.add_argument("--num-epochs", type=int, default = 5)
@@ -96,7 +97,9 @@ if __name__ == '__main__':
     elif args.model == 'bonitosnn':
         from bonitosnn.model.snn_model import BonitoSNNModel as Model 
     elif args.model == 'bonitospikeconv':
-        from bonitosnn.model.snn_model import BonitoSpikeConv as Model 
+        from bonitosnn.model.snn_model import BonitoSpikeConv as Model
+    elif args.model == 'bonitospikelin':
+        from bonitosnn.model.snn_model import BonitoSpikeLin as Model
         
     print('Creating dataset')
     dataset = BaseNanoporeDataset(

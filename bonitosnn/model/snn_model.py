@@ -133,9 +133,9 @@ class BonitoSpikeConv(BonitoSNNModel):
 
     def build_spike_conv(self,conv_threshold):
         
-        class spikeconv(nn.Module):
+        class SpikeConv(nn.Module):
             def __init__(self,conv_th=0.05):
-                super(spikeconv, self).__init__()
+                super(SpikeConv, self).__init__()
                 beta = 0.8  # neuron decay rate  #GROUPS : A: [0.7], B: [0.8], C: [0.85], D: [0.9 - 1]
                 grad = surrogate.straight_through_estimator()
                 
@@ -182,5 +182,73 @@ class BonitoSpikeConv(BonitoSNNModel):
                 """
                 return self.cnet(x)
                 
-        return spikeconv(conv_threshold)
+        return SpikeConv(conv_threshold)
+    
+class BonitoSpikeLin(BonitoSNNModel):
+    def __init__(self, convolution=None, encoder=None, decoder=None, reverse=True, load_default=False,slstm_threshold=0.05,conv_threshold=0.05, *args, **kwargs):
+        super().__init__(convolution, encoder, decoder, reverse, load_default,slstm_threshold, *args, **kwargs)
+        self.convolution=self.build_spike_lin(conv_threshold) #build_spike_conv() #build_cnn()
+
+    def build_spike_lin(self,conv_threshold):
+        
+        class SpikeLin(nn.Module):
+            def __init__(self,conv_th=0.05):
+                super(SpikeLin, self).__init__()
+                beta = 0.8  # neuron decay rate  #GROUPS : A: [0.7], B: [0.8], C: [0.85], D: [0.9 - 1]
+                grad = surrogate.straight_through_estimator()
+                
+                self.neuron1=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+                self.neuron2=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+                self.neuron3=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+
+                self.neuron4=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+
+                
+                self.lin1=nn.Linear(1,4)
+                self.lin2=nn.Linear(4,16)
+                self.lin3=nn.Linear(16,384)
+                
+                self.lin4=nn.Linear(2000,400)
+                #self.net= nn.Sequential(nn.Linear(1,4),self.neuron1,nn.Linear(4,16),self.neuron2,nn.Linear(16,384),self.neuron3)
+                
+                self.linet=nn.Sequential(
+                                #nn.Conv1d(in_channels = 1, out_channels = 4, kernel_size = 5, stride= 1, padding=5//2, bias=True),
+                                self.lin1,
+                                self.neuron1,
+                                #nn.Conv1d(in_channels = 4, out_channels = 16, kernel_size = 5, stride= 1, padding=5//2, bias=True),
+                                self.lin2,
+                                self.neuron2,
+                                #nn.Conv1d(in_channels = 16, out_channels = 384, kernel_size = 19, stride= 5, padding=19//2, bias=True),
+                                self.lin3,
+                                self.neuron3,
+
+                            )
+
+            def forward(self, x):
+                #mem1 = self.neuron1.init_leaky() #non necessario se init_hidden True
+                
+                utils.reset(self.linet)
+
+                self.linet.train()
+
+                x1=self.linet(x.permute(2,0,1))
+                y=self.neuron4(self.lin4(x1.permute(1,2,0)))
+
+                """
+                spike_recording = []
+                for x_step in x.permute(2,0,1):  #layer lineari lavorano sull'ultima dimensione
+                    spike_recording.append(self.net(x_step))
+
+                #spike_recording = []
+                #for x_step in x:
+                #    spike_recording.append(self.cnet(x_step))
+                #x=torch.stack(spike_recording)
+
+                #x=self.net(x.permute(2,0,1))
+                #x=self.conv1(x.permute(1,2,0))
+                #x=self.lin4(x.permute(1,2,0))  #self.neuron4(
+                """
+                return y
+                
+        return SpikeLin(conv_threshold)
     
