@@ -16,7 +16,7 @@ from layers.bonito import BonitoLSTM
 class BonitoModel(BaseModelImpl):
     """Bonito Model
     """
-    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False,nlstm=0, *args, **kwargs):
+    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False, *args, **kwargs):
         super(BonitoModel, self).__init__(*args, **kwargs)
         """
         Args:
@@ -78,7 +78,7 @@ class BonitoModel(BaseModelImpl):
         return cnn
 
     def build_encoder(self, input_size, reverse):
-        
+
         if reverse:
             encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = True),
                                     BonitoLSTM(384, 384, reverse = False),
@@ -113,4 +113,3 @@ class BonitoModel(BaseModelImpl):
         self.encoder = self.build_encoder(input_size = 384, reverse = True)
         self.decoder = self.build_decoder(encoder_output_size = 384, decoder_type = 'crf')
         self.decoder_type = 'crf'
-
