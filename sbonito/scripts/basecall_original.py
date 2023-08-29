@@ -38,6 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--beam-size", type=int, default = 1)
     parser.add_argument("--beam-threshold", type=float, default = 0.1)
     parser.add_argument("--model-stride", type=int, default = None)
+    parser.add_argument("--nlstm",type=int,default=0,choices=[0,1,2,3,4],help='number of lstm blocks must be between 0 and 4')
     
     args = parser.parse_args()
 
@@ -89,6 +90,8 @@ if __name__ == "__main__":
         dataloader_validation = None, 
         scaler = scaler,
         use_amp = use_amp,
+        nlstm=args.nlstm
+
     )
     model = model.to(device)
 
