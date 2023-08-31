@@ -90,6 +90,8 @@ if __name__ == "__main__":
     parser.add_argument("--processes", type=int, help='Number of parallel processes', default = 2)
     parser.add_argument("--verbose", action="store_true", help='Print read ids as they are being evaluated')
     parser.add_argument("--overwrite", action='store_true', help='Overwrite existing output file')
+    parser.add_argument("--nlstm",type=int,default=0,choices=[0,1,2,3,4],help='number of lstm blocks must be between 0 and 4')
+
     args = parser.parse_args()
 
     # get all the basecall files
@@ -120,7 +122,7 @@ if __name__ == "__main__":
         if args.overwrite:
             os.remove(output_file)
             with open(output_file, 'w') as f:
-                f.write('#'+args.model_name+'\n')
+                f.write('#'+args.model_name+args.nlstm+'lstm'+'\n')
         else:
             try:
                 df = pd.read_csv(output_file, header = 0, index_col = False, comment = '#')
@@ -130,7 +132,8 @@ if __name__ == "__main__":
                 pass
     else:
         with open(output_file, 'w') as f:
-            f.write('#'+args.model_name+'\n')
+            f.write('#'+args.model_name+args.nlstm+'lstm'+'\n')
+ 
 
 
     # read all the reference sequences into memory
