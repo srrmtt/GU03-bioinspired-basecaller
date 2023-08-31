@@ -122,7 +122,7 @@ if __name__ == "__main__":
         if args.overwrite:
             os.remove(output_file)
             with open(output_file, 'w') as f:
-                f.write('#'+args.model_name+args.nlstm+'lstm'+'\n')
+                f.write('#'+args.model_name+str(args.nlstm)+'lstm'+'\n')
         else:
             try:
                 df = pd.read_csv(output_file, header = 0, index_col = False, comment = '#')
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                 pass
     else:
         with open(output_file, 'w') as f:
-            f.write('#'+args.model_name+args.nlstm+'lstm'+'\n')
+            f.write('#'+args.model_name+str(args.nlstm)+'lstm'+'\n')
  
 
 
