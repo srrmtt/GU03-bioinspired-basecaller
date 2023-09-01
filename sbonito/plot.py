@@ -66,8 +66,8 @@ if __name__ == "__main__":
 
     for k in plots_to_make:
         df = list()
+        print(plots_and_files)
         for f in plots_and_files[k]:
-            print(plots_and_files)
             df.append(pd.read_csv(f))
         df = pd.concat(df)
         getattr(plot, k)(df = df, output_path = args.output_dir)
