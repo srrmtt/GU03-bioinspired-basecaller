@@ -41,7 +41,7 @@ if __name__ == "__main__":
     for f in all_input_files:
         fname = Path(f).with_suffix('').stem
         pname = fname.split('_')[2]
-        modelnames.append(fname.split('_')[1])
+        modelnames.append(fname)
         if not pname in plots_and_files.keys():
             plots_and_files[pname] = list()
         plots_and_files[pname].append(f)
