@@ -26,6 +26,7 @@ if __name__ == "__main__":
     plots_to_make = args.plots
     if "all" in plots_to_make:
         plots_to_make = available_plot_functions
+        print(plots_to_make)
 
     all_input_files = list()
     for inp in args.reports:
