@@ -26,7 +26,6 @@ if __name__ == "__main__":
     plots_to_make = args.plots
     if "all" in plots_to_make:
         plots_to_make = available_plot_functions
-        print(plots_to_make)
 
     all_input_files = list()
     for inp in args.reports:
@@ -66,7 +65,6 @@ if __name__ == "__main__":
 
     for k in plots_to_make:
         df = list()
-        print(plots_and_files)
         for f in plots_and_files[k]:
             df.append(pd.read_csv(f))
         df = pd.concat(df)
