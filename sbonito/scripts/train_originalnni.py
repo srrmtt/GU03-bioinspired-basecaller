@@ -58,7 +58,8 @@ def generate_log_df(losses_keys, metrics_keys):
 if __name__ == '__main__':
     #setting all default arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", type=str, help='Path where the data for the dataloaders is stored', default="/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled/nni")
+    parser.add_argument("--data-dir", type=str, help='Path where the data for the dataloaders is stored',
+             default="/root/Acinetobacter_baumannii_AYP-A2/train_numpy_min")
     parser.add_argument("--output-dir", type=str, help='Path where the model is saved',default="./test_nni")
     parser.add_argument("--model", type=str, choices=[
         'bonito',
@@ -72,10 +73,10 @@ if __name__ == '__main__':
         'bonitospikeconv',
         'bonitospikelin'
     ], help='Model',default="bonitosnn")
-    parser.add_argument("--window-size", type=int, choices=[400, 1000, 2000, 4000], help='Window size for the data',default="2000")
+    parser.add_argument("--window-size", type=int, choices=[400, 1000, 2000, 4000], help='Window size for the data',default=2000)
     parser.add_argument("--num-epochs", type=int, default = 1)
-    parser.add_argument("--batch-size", type=int, default = 64)
-    parser.add_argument("--starting-lr", type=float, default = 0.001)
+    #parser.add_argument("--batch-size", type=int, default = 64)
+    #parser.add_argument("--starting-lr", type=float, default = 0.001)
     parser.add_argument("--warmup-steps", type=int, default = 5000)
     parser.add_argument("--use-scaler", action='store_true', help='use 16bit float precision')
     parser.add_argument("--overwrite", action='store_true', help='delete existing files in folder')
@@ -192,6 +193,7 @@ if __name__ == '__main__':
     print('Creating outputs')
     # output stuff
     trial_id=nni.get_sequence_id()
+    print("trial n.: ",str(trial_id))
     output_dir = os.path.join(args.output_dir,"trial_"+str(trial_id))
     checkpoints_dir = os.path.join(output_dir, 'checkpoints')
 
@@ -292,6 +294,7 @@ if __name__ == '__main__':
                 print(log_df)                    
                 # write results to console
                 nni.report_intermediate_result(metrics["metric.accuracy"])
+        model.save(os.path.join(checkpoints_dir, 'checkpoint_epoch_' + str(epoch_num) + '.pt'))
     """
     current_metric_value=metrics["metric.accuracy"]     
     if prev_metric_value is not None and current_metric_value - prev_metric_value < 0.001:
