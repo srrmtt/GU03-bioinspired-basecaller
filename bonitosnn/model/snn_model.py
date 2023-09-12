@@ -99,7 +99,7 @@ class BonitoSNNModel(BaseModelImpl):
         
         modules=[] #BonitoLSTM(input_size, 384, reverse = True)]
         
-        for i in range(nlstm-1):
+        for i in range(nlstm):
             reverse= not reverse
             modules.append(BonitoLSTM(input_size, 384, reverse = True))
         for j in range(5-nlstm):
