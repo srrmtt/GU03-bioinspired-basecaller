@@ -92,6 +92,22 @@ class BonitoSNNModel(BaseModelImpl):
         return cnn
 
     def build_encoder(self, input_size, reverse,nlstm=0):
+        if reverse: #mi sa che a sto punto non servono proprio
+            reverse=True
+        else:
+            reverse=False
+        
+        modules=[] #BonitoLSTM(input_size, 384, reverse = True)]
+        
+        for i in range(nlstm-1):
+            reverse= not reverse
+            modules.append(BonitoLSTM(input_size, 384, reverse = True))
+        for j in range(5-nlstm):
+            reverse= not reverse
+            modules.append(BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
+
+        encoder=nn.Sequential(*modules)
+        """
         if nlstm==1:
              if reverse:
                 encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = True),
@@ -157,6 +173,7 @@ class BonitoSNNModel(BaseModelImpl):
                                         BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
                                         BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
                                         BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
+        """
         return encoder    
 
     def get_defaults(self):

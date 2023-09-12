@@ -8,7 +8,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     #args di train_original_nni
     parser.add_argument("--data-dir", type=str, help='Path where the data for the dataloaders is stored', 
-    default="/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled/nni")
+    default="/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled/train_numpy_min")
     parser.add_argument("--output-dir", type=str, help='Path where the model is saved',default="./test_nni")
     parser.add_argument("--model", type=str, choices=[
         'bonito',
