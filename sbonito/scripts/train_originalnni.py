@@ -86,9 +86,10 @@ if __name__ == '__main__':
     'starting-lr': 0.001,
     'warmup-steps': 5000,
     }
-    optimized_params = nni.get_next_parameter()
-    params.update(optimized_params)
-    print(params)
+  
+    #optimized_params = nni.get_next_parameter()
+    #params.update(optimized_params)
+    #print(params)
     validate_every = 100
     checkpoint_every = 20000
 
@@ -112,174 +113,191 @@ if __name__ == '__main__':
     elif args.model == 'bonitospikeconv':
         from bonitosnn.model.snn_model import BonitoSpikeConv as Model 
    
-    print('Creating dataset')
-    dataset = BaseNanoporeDataset(
-        data_dir = data_dir, 
-        decoding_dict = decoding_dict, 
-        encoding_dict = encoding_dict, 
-        split = 0.95, 
-        shuffle = True, 
-        seed = 1,
-        s2s = s2s,
-    )
+    prev_metric_value = None
+    stale_count = 0
+    max_stale_count = 5 
+    nni.training_loop_started()
+    while True:
+        next_params = nni.get_next_parameter()
+        print('Creating dataset')
+        dataset = BaseNanoporeDataset(
+            data_dir = data_dir, 
+            decoding_dict = decoding_dict, 
+            encoding_dict = encoding_dict, 
+            split = 0.95, 
+            shuffle = True, 
+            seed = 1,
+            s2s = s2s,
+        )
 
-    dataloader_train = DataLoader(
-        dataset, 
-        batch_size = params['batch-size'], 
-        sampler = dataset.train_sampler, 
-        num_workers = 1
-    )
-    dataloader_validation = DataLoader(
-        dataset, 
-        batch_size = params['batch-size'], 
-        sampler = dataset.validation_sampler, 
-        num_workers = 1
-    )
+        dataloader_train = DataLoader(
+            dataset, 
+            batch_size = next_params['batch-size'], 
+            sampler = dataset.train_sampler, 
+            num_workers = 1
+        )
+        dataloader_validation = DataLoader(
+            dataset, 
+            batch_size = next_params['batch-size'], 
+            sampler = dataset.validation_sampler, 
+            num_workers = 1
+        )
 
-    
-    if args.use_scaler:
-        use_amp = True
-        scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
-    else:
-        use_amp = False
-        scaler = None
+        
+        if args.use_scaler:
+            use_amp = True
+            scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        else:
+            use_amp = False
+            scaler = None
 
-    print('Creating model')
-    model = Model(
-        load_default = True,
-        device = device,
-        dataloader_train = dataloader_train, 
-        dataloader_validation = dataloader_validation, 
-        scaler = scaler,
-        use_amp = use_amp,
-        nlstm=args.nlstm
-    )
-    model = model.to(device)
+        print('Creating model')
+        model = Model(
+            load_default = True,
+            device = device,
+            dataloader_train = dataloader_train, 
+            dataloader_validation = dataloader_validation, 
+            scaler = scaler,
+            use_amp = use_amp,
+            nlstm=args.nlstm
+        )
+        model = model.to(device)
 
-    print('Creating optimization')
-    ##    OPTIMIZATION     #############################################
-    optimizer = torch.optim.Adam(model.parameters(), lr=params['starting-lr'])
-    total_steps =  (len(dataset.train_idxs)*args.num_epochs)/params['batch-size']
-    cosine_lr = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,total_steps, eta_min=0.00001, last_epoch=-1, verbose=False)
-    lr_scheduler = GradualWarmupScheduler(optimizer, multiplier = 1.0, total_epoch = params['warmup-steps'], after_scheduler=cosine_lr)
-    schedulers = {'lr_scheduler': lr_scheduler}
-    clipping_value = 2
-    use_sam = False
+        print('Creating optimization')
+        ##    OPTIMIZATION     #############################################
+        optimizer = torch.optim.Adam(model.parameters(), lr=next_params['starting-lr'])
+        total_steps =  (len(dataset.train_idxs)*args.num_epochs)/next_params['batch-size']
+        cosine_lr = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,total_steps, eta_min=0.00001, last_epoch=-1, verbose=False)
+        lr_scheduler = GradualWarmupScheduler(optimizer, multiplier = 1.0, total_epoch = next_params['warmup-steps'], after_scheduler=cosine_lr)
+        schedulers = {'lr_scheduler': lr_scheduler}
+        clipping_value = 2
+        use_sam = False
 
 
-    ##   MODEL PART2        #############################################
-    model.optimizer = optimizer
-    model.schedulers = schedulers
-    model.clipping_value = clipping_value
-    model.use_sam = use_sam
+        ##   MODEL PART2        #############################################
+        model.optimizer = optimizer
+        model.schedulers = schedulers
+        model.clipping_value = clipping_value
+        model.use_sam = use_sam
 
-    if args.checkpoint is not None:
-        model.load(args.checkpoint, initialize_lazy = True)
-        model.to(device)
+        if args.checkpoint is not None:
+            model.load(args.checkpoint, initialize_lazy = True)
+            model.to(device)
 
-    print('Creating outputs')
-    # output stuff
-    output_dir = args.output_dir
-    checkpoints_dir = os.path.join(output_dir, 'checkpoints')
+        print('Creating outputs')
+        # output stuff
+        output_dir = args.output_dir
+        checkpoints_dir = os.path.join(output_dir, 'checkpoints')
 
-    # check output dir
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
-        os.mkdir(checkpoints_dir)
-    else:
-        if args.overwrite:
-            shutil.rmtree(output_dir)
+        # check output dir
+        if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
             os.mkdir(checkpoints_dir)
         else:
-            if len(os.listdir(output_dir)) > 0:
-                raise FileExistsError('Output dir contains files')
-            else:
+            if args.overwrite:
+                shutil.rmtree(output_dir)
+                os.mkdir(output_dir)
                 os.mkdir(checkpoints_dir)
-    
-    # keep track of losses and metrics to take the average
-    train_results = dict()
-    
-    print('Training')
-    total_num_steps = 1
-    for epoch_num in range(args.num_epochs):
+            else:
+                if len(os.listdir(output_dir)) > 0:
+                    raise FileExistsError('Output dir contains files')
+                else:
+                    os.mkdir(checkpoints_dir)
         
-        loader_train = model.dataloader_train
-        loader_validation = model.dataloader_validation
-        # use this to restart the in case we finish all the validation data
-        validation_iterator = iter(loader_validation) 
+        # keep track of losses and metrics to take the average
+        train_results = dict()
         
-        st_time = time.time()
-        # iterate over the train data
-        for train_batch_num, train_batch in enumerate(loader_train):
+        print('Training')
+        total_num_steps = 1
+
+        for epoch_num in range(args.num_epochs):
             
-            losses, predictions = model.train_step(train_batch)
-            total_num_steps += 1
+            loader_train = model.dataloader_train
+            loader_validation = model.dataloader_validation
+            # use this to restart the in case we finish all the validation data
+            validation_iterator = iter(loader_validation) 
             
-            for k, v in losses.items():
-                if k not in train_results.keys():
-                    train_results[k] = list()
-                train_results[k].append(v)
-            
-            if total_num_steps % validate_every == 0:
+            st_time = time.time()
+            # iterate over the train data
+            for train_batch_num, train_batch in enumerate(loader_train):
                 
-                # calculate accuracy for the training only here since doing for every batch
-                # is expensive and slow...
-                predictions_decoded = model.decode(predictions, greedy = True)
-                metrics = model.evaluate(train_batch, predictions_decoded)
-                
-                # log the train results
-                log_df = generate_log_df(list(losses.keys()), list(metrics.keys()))
-                for k, v in train_results.items():
-                    log_df[k + '.train'] = np.mean(v)
-                for k, v in metrics.items():
-                    log_df[k + '.train'] = np.mean(v)
-                train_results = dict() # reset the dict
-                
-                try:
-                    validation_batch = next(validation_iterator)
-                except StopIteration:
-                    validation_iterator = iter(loader_validation)
-                    validation_batch = next(validation_iterator)
-                                
-                # calculate and log the validation results
-                losses, predictions = model.validation_step(validation_batch)
-                predictions_decoded = model.decode(predictions, greedy = True)
-                metrics = model.evaluate(validation_batch, predictions_decoded)
+                losses, predictions = model.train_step(train_batch)
+                total_num_steps += 1
                 
                 for k, v in losses.items():
-                    log_df[k + '.val'] = v # do not need the mean as we only did it once
-                for k, v in metrics.items():
-                    log_df[k + '.val'] = np.mean(v)
-                    
-                # calculate time it took since last validation step
-                log_df['epoch'] = str(epoch_num)
-                log_df['step'] = str(total_num_steps)
-                log_df['time'] = int(time.time() - st_time)
-                for param_group in model.optimizer.param_groups:
-                    log_df['lr'] = param_group['lr']
-                st_time = time.time()
-                    
-                # save the model if we are at a saving step
-                if total_num_steps % checkpoint_every == 0:
-                    log_df['checkpoint'] = 'yes'
-                    model.save(os.path.join(checkpoints_dir, 'checkpoint_' + str(total_num_steps) + '.pt'))
-                else:
-                    log_df['checkpoint'] = 'no'
+                    if k not in train_results.keys():
+                        train_results[k] = list()
+                    train_results[k].append(v)
                 
-                # write to log
-                if not os.path.isfile(os.path.join(output_dir, 'train.log')):
-                    log_df.to_csv(os.path.join(output_dir, 'train.log'), 
-                                  header=True, index=False)
-                else: # else it exists so append without writing the header
-                    log_df.to_csv(os.path.join(output_dir, 'train.log'), 
-                                  mode='a', header=False, index=False)
+                if total_num_steps % validate_every == 0:
                     
-                # write results to console
-                nni.report_intermediate_result(metrics.accuracy.train)
+                    # calculate accuracy for the training only here since doing for every batch
+                    # is expensive and slow...
+                    predictions_decoded = model.decode(predictions, greedy = True)
+                    metrics = model.evaluate(train_batch, predictions_decoded)
+                    
+                    # log the train results
+                    log_df = generate_log_df(list(losses.keys()), list(metrics.keys()))
+                    for k, v in train_results.items():
+                        log_df[k + '.train'] = np.mean(v)
+                    for k, v in metrics.items():
+                        log_df[k + '.train'] = np.mean(v)
+                    train_results = dict() # reset the dict
+                    
+                    try:
+                        validation_batch = next(validation_iterator)
+                    except StopIteration:
+                        validation_iterator = iter(loader_validation)
+                        validation_batch = next(validation_iterator)
+                                    
+                    # calculate and log the validation results
+                    losses, predictions = model.validation_step(validation_batch)
+                    predictions_decoded = model.decode(predictions, greedy = True)
+                    metrics = model.evaluate(validation_batch, predictions_decoded)
+                    
+                    for k, v in losses.items():
+                        log_df[k + '.val'] = v # do not need the mean as we only did it once
+                    for k, v in metrics.items():
+                        log_df[k + '.val'] = np.mean(v)
+                        
+                    # calculate time it took since last validation step
+                    log_df['epoch'] = str(epoch_num)
+                    log_df['step'] = str(total_num_steps)
+                    log_df['time'] = int(time.time() - st_time)
+                    for param_group in model.optimizer.param_groups:
+                        log_df['lr'] = param_group['lr']
+                    st_time = time.time()
+                        
+                    # save the model if we are at a saving step
+                    if total_num_steps % checkpoint_every == 0:
+                        log_df['checkpoint'] = 'yes'
+                        model.save(os.path.join(checkpoints_dir, 'checkpoint_' + str(total_num_steps) + '.pt'))
+                    else:
+                        log_df['checkpoint'] = 'no'
+                    
+                    # write to log
+                    if not os.path.isfile(os.path.join(output_dir, 'train.log')):
+                        log_df.to_csv(os.path.join(output_dir, 'train.log'), 
+                                    header=True, index=False)
+                    else: # else it exists so append without writing the header
+                        log_df.to_csv(os.path.join(output_dir, 'train.log'), 
+                                    mode='a', header=False, index=False)
+                        
+                    # write results to console
+                    nni.report_intermediate_result(metrics["metric.accuracy"])
 
-                print(log_df)
-    nni.report_final_result(metrics.accuracy.train)
+                    print(log_df)
+        current_metric_value=metrics["metric.accuracy"]     
+        if prev_metric_value is not None and current_metric_value - prev_metric_value < 0.001:
+            stale_count += 1
+            if stale_count >= max_stale_count:
+                break             
+        prev_metric_value = metrics["metric.accuracy"]     
+        nni.report_intermediate_result(metrics["metric.accuracy"])
+  
+    nni.report_final_result(metrics["metric.accuracy"])
+    nni.training_loop_finished()
+
 
                 
     
