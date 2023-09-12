@@ -14,7 +14,8 @@
             "args": [
                 "--model","bonitosnn",
                 "--chunk-size","4",
-                "--fast5-list","./sbonito/inter_task_test_reads.txt",
+                //"--fast5-list","./sbonito/inter_task_test_reads.txt",
+                "--fast5-dir","/root/Acinetobacter_baumannii_AYP-A2/all_fast5",
                 "--checkpoint","../bonitosnn_trained/checkpoint_43546.pt",
                 "--output-file","./sbonito/inter_test_basecalls.fastq"
             ]
@@ -28,10 +29,11 @@
             "justMyCode": true,
             "args": [
                 "--data-dir", "/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
-                "--output-dir", "./sbonito/test_res_spike_lin_0",
-                "--model", "bonitospikelin",
+                "--output-dir", "./sbonito/test_nni_2",
+                "--model", "bonitosnn",
                 "--window-size", "2000",
                 "--batch-size", "4",
+                "--nlstm","0",
                 //"--starting-lr","0.00002",
                 //"--warmup-steps","0",
                 //"--overwrite"
