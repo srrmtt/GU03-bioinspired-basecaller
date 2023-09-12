@@ -56,7 +56,7 @@ if __name__=="__main__":
     experiment.config.experiment_working_directory=args.nni_dir #'./sbonito/nni-experiments'
 
     experiment.config.max_trial_number = 10
-    experiment.config.trial_concurrency = 1
+    experiment.config.trial_concurrency = 10
 
     #experiment.config.max_experiment_duration = '5m'
 
