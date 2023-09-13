@@ -1,0 +1,22 @@
+authorName: Author
+experimentName: nni_snn_1
+trialConcurrency: 1
+maxExecDuration: 20d
+maxTrialNum: 1000
+trainingServicePlatform: local
+searchSpacePath: ../nni_SearchSpace_snn.json
+useAnnotation: false
+tuner:
+  builtinTunerName: Anneal
+  classArgs:
+    optimize_mode: maximize
+  gpuIndices: '1' 
+trial:
+  command: python /home/mla_group_11/GU03-bioinspired-basecaller/sbonito/scripts/train_originalnni.py \
+  --data-dir GU03-bioinspired-basecaller/sbonito/new_wick2_train_numpy --output-dir GU03-bioinspired-basecaller/sbonito/test_nni \
+  --model bonitosnn --nlstm 0
+  codeDir: GU03-bioinspired-basecaller/sbonito
+  experimentWorkingDirectory: GU03-bioinspired-basecaller/sbonito/nni-experiments
+  gpuNum: 1
+localConfig:
+  useActiveGpu: true

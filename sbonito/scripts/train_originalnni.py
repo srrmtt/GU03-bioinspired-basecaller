@@ -124,6 +124,7 @@ if __name__ == '__main__':
     #nni.training_loop_started()
     #while True:
     next_params = nni.get_next_parameter()
+    print("current parameters: ",next_params)
     print('Creating dataset')
     dataset = BaseNanoporeDataset(
         data_dir = data_dir, 
