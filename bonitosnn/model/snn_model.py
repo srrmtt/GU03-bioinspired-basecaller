@@ -20,7 +20,8 @@ from bonitosnn.layers import BonitoSLSTM
 class BonitoSNNModel(BaseModelImpl):
     """Bonito Model
     """
-    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False,nlstm=0,slstm_threshold=0.05, *args, **kwargs):
+    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True,
+                 load_default = False,nlstm=0,slstm_threshold=0.05, conv_threshold=0, *args, **kwargs):
         super(BonitoSNNModel, self).__init__(*args, **kwargs)
         """
         Args:
@@ -107,73 +108,6 @@ class BonitoSNNModel(BaseModelImpl):
             modules.append(BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
 
         encoder=nn.Sequential(*modules)
-        """
-        if nlstm==1:
-             if reverse:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = True),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
-             else:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = False),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
-        elif nlstm==2:
-             if reverse:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = True),
-                                        BonitoLSTM(384, 384, reverse = False),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
-             else:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = False),
-                                        BonitoLSTM(384, 384, reverse = True),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
-        elif nlstm==3:
-             if reverse:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = True),
-                                        BonitoLSTM(384, 384, reverse = False),
-                                        BonitoLSTM(384, 384, reverse = True),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
-             else:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = False),
-                                        BonitoLSTM(384, 384, reverse = True),
-                                        BonitoLSTM(384, 384, reverse = False),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
-        elif nlstm==4:
-             if reverse:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = True),
-                                        BonitoLSTM(384, 384, reverse = False),
-                                        BonitoLSTM(384, 384, reverse = True),
-                                        BonitoLSTM(384, 384, reverse = False),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
-             else:
-                encoder = nn.Sequential(BonitoLSTM(input_size, 384, reverse = False),
-                                        BonitoLSTM(384, 384, reverse = True),
-                                        BonitoLSTM(384, 384, reverse = False),
-                                        BonitoLSTM(384, 384, reverse = True),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
-        else:
-            if reverse:
-                encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold))
-            else:
-                encoder = nn.Sequential(BonitoSLSTM(input_size, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = True,threshold=self.slstm_threshold),
-                                        BonitoSLSTM(384, 384, reverse = False,threshold=self.slstm_threshold))
-        """
         return encoder    
 
     def get_defaults(self):
@@ -198,8 +132,8 @@ class BonitoSNNModel(BaseModelImpl):
         self.decoder_type = 'crf'
 
 class BonitoSpikeConv(BonitoSNNModel):
-    def __init__(self, convolution=None, encoder=None, decoder=None, reverse=True, load_default=False,slstm_threshold=0.05,conv_threshold=0.05, *args, **kwargs):
-        super().__init__(convolution, encoder, decoder, reverse, load_default,slstm_threshold, *args, **kwargs)
+    def __init__(self, convolution=None, encoder=None, decoder=None, reverse=True, load_default=False,slstm_threshold=0.05,conv_threshold=0.05,nlstm=0, *args, **kwargs):
+        super().__init__(convolution, encoder, decoder, reverse, load_default,nlstm,slstm_threshold, *args, **kwargs)
         self.convolution=self.build_spike_conv(conv_threshold) #build_spike_conv() #build_cnn()
 
     def build_spike_conv(self,conv_threshold):
@@ -210,10 +144,13 @@ class BonitoSpikeConv(BonitoSNNModel):
                 beta = 0.8  # neuron decay rate  #GROUPS : A: [0.7], B: [0.8], C: [0.85], D: [0.9 - 1]
                 grad = surrogate.straight_through_estimator()
                 
-                self.neuron1=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
-                self.neuron2=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
-                self.neuron3=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th)
+                self.neuron1=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th, learn_beta=True)
+                self.neuron2=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th,learn_beta=True)
+                self.neuron3=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th,learn_beta=True)
 
+                self.conv1=nn.Conv1d(in_channels = 1, out_channels = 4, kernel_size = 5, stride= 1, padding=5//2, bias=True),
+                self.conv2=nn.Conv1d(in_channels = 4, out_channels = 16, kernel_size = 5, stride= 1, padding=5//2, bias=True),
+                self.conv3=nn.Conv1d(in_channels = 16, out_channels = 384, kernel_size = 19, stride= 5, padding=19//2, bias=True),
                 """
                 self.lin1=nn.Linear(1,4)
                 self.lin2=nn.Linear(4,16)
@@ -232,8 +169,25 @@ class BonitoSpikeConv(BonitoSNNModel):
                             )
 
             def forward(self, x):
-                #mem1 = self.neuron1.init_leaky() #non necessario se init_hidden True
+                """
+                mem1 = self.neuron1.init_leaky() #non necessario se init_hidden True
+                mem2 = self.neuron2.init_leaky()
+                mem3 = self.neuron3.init_leaky()
+                spike_recording = []
+                mem_recording=[]
+                for x_step in x.permute(2,0,1):
+                    cur1=self.conv1(x_step)
+                    spk1,mem1=self.neuron1(cur1,mem1)
+                    cur2=self.neuron2(spk1)
+                    spk2,mem2=self.neuron2(cur2,mem2)
+                    cur3=self.neuron3(spk2)
+                    spk3,mem3=self.neuron3(cur3,mem3)
+
+                    spike_recording.append(spk3)
+                    mem_recording.append(mem3)
                 
+                return torch.stack(spike_recording),torch.stack(mem_recording)
+                """
                 #utils.reset(self.net)
                 utils.reset(self.cnet)
                 self.cnet.train()

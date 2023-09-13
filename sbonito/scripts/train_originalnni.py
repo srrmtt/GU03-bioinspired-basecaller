@@ -165,6 +165,7 @@ if __name__ == '__main__':
         scaler = scaler,
         use_amp = use_amp,
         nlstm=args.nlstm,
+        conv_threshold=next_params["conv_th"] if "conv_th" in next_params else 0,
         slstm_threshold=next_params["slstm_threshold"]
     )
     model = model.to(device)

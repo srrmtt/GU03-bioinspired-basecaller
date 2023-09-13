@@ -8,16 +8,10 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     #args di train_original_nni
     parser.add_argument("--data-dir", type=str, help='Path where the data for the dataloaders is stored', 
-    default="/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled/train_numpy_min")
+    default="/root/Acinetobacter_baumannii_AYP-A2/train_numpy_min")
     parser.add_argument("--output-dir", type=str, help='Path where the model is saved',default="./test_nni")
     parser.add_argument("--model", type=str, choices=[
         'bonito',
-        'catcaller',
-        'causalcall',
-        'mincall',
-        'sacall',
-        'urnano',
-        'halcyon',
         'bonitosnn',
         'bonitospikeconv',
         'bonitospikelin'
@@ -31,13 +25,22 @@ if __name__=="__main__":
     parser.add_argument("--nni-dir", type=str, help='Path of the nni-experiments dir', default='./sbonito/nni-experiments')
     args = parser.parse_args()
 
+    if args.model=="bonitosnn":
+        search_space = {
+        'batch-size': {'_type': 'randint', '_value': [16, 128]},
+        'starting-lr': {'_type': 'loguniform', '_value': [0.0001, 0.01]},
+        #'warmup-steps': 5000,
+        'slstm_threshold':{'_type': 'uniform', '_value': [0.01, 0.1]},
+        }
 
-    search_space = {
-    'batch-size': {'_type': 'randint', '_value': [16, 128]},
-    'starting-lr': {'_type': 'loguniform', '_value': [0.0001, 0.01]},
-    #'warmup-steps': 5000,
-    'slstm_threshold':{'_type': 'uniform', '_value': [0.01, 0.1]},
-    }
+    elif args.model=="bonitospikeconv":
+        #spikeconv search space
+        search_space = {
+        'batch-size': {'_type': 'randint', '_value': [16, 128]},
+        'starting-lr': {'_type': 'loguniform', '_value': [0.0001, 0.01]},
+        'slstm_threshold':{'_type': 'uniform', '_value': [0.01, 0.2]},
+        'conv_th':{'_type': 'uniform', '_value': [0.01, 0.2]},
+        }
 
     print("working dir: ",os.getcwd())
 

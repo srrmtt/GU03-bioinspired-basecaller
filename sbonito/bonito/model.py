@@ -16,7 +16,8 @@ from layers.bonito import BonitoLSTM
 class BonitoModel(BaseModelImpl):
     """Bonito Model
     """
-    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False, *args, **kwargs):
+    def __init__(self, convolution = None, encoder = None, decoder = None, reverse = True, load_default = False,
+                 nlstm=0,slstm_threshold=0.05, conv_threshold=0, *args, **kwargs):
         super(BonitoModel, self).__init__(*args, **kwargs)
         """
         Args:
