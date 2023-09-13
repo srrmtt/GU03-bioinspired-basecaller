@@ -51,7 +51,7 @@ if __name__=="__main__":
     experiment.config.tuner.class_args['optimize_mode'] = 'maximize'
 
     experiment.config.trial_command = 'python '+args.train_file+" --data-dir "+args.data_dir+" --output-dir "+args.output_dir+\
-        " --model "+args.model +" --nlstm "+args.nlstm
+        " --model "+args.model +" --nlstm "+str(args.nlstm)
     experiment.config.trial_code_directory = args.code_dir #'./sbonito'
     #experiment.config.trial_gpu_number=1
     #experiment.config.use_active_gpu=True
@@ -63,4 +63,9 @@ if __name__=="__main__":
 
     #experiment.config.max_experiment_duration = '5m'
 
-    experiment.run(8080)
+    for port in range(8020,8090):
+        try:
+            experiment.run(port)
+            break
+        except:
+            pass
