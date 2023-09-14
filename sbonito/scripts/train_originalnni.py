@@ -295,7 +295,8 @@ if __name__ == '__main__':
 
                 print(log_df)                    
                 # write results to console
-                nni.report_intermediate_result(metrics["metric.accuracy"])
+                nni.report_intermediate_result(np.mean(metrics["metric.accuracy"]))
+
         model.save(os.path.join(checkpoints_dir, 'checkpoint_epoch_' + str(epoch_num) + '.pt'))
     """
     current_metric_value=metrics["metric.accuracy"]     
@@ -304,10 +305,11 @@ if __name__ == '__main__':
         if stale_count >= max_stale_count:
             break             
     prev_metric_value = metrics["metric.accuracy"]  
-    """   
-    #nni.report_intermediate_result(metrics["metric.accuracy"])
+    """
+
+    #print("final result: ",metrics["metric.accuracy"])
   
-    nni.report_final_result(metrics["metric.accuracy"])
+    nni.report_final_result(np.mean(metrics["metric.accuracy"]))
     #nni.training_loop_finished()
 
     model.save(os.path.join(checkpoints_dir, 'checkpoint_' + str(total_num_steps) + '.pt'))

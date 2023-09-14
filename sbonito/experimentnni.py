@@ -2,6 +2,7 @@ import nni
 from nni.experiment import Experiment
 import os
 import argparse
+import sys
 
 
 if __name__=="__main__":
@@ -51,7 +52,7 @@ if __name__=="__main__":
     experiment.config.tuner.class_args['optimize_mode'] = 'maximize'
 
     experiment.config.trial_command = 'python '+args.train_file+" --data-dir "+args.data_dir+" --output-dir "+args.output_dir+\
-        " --model "+args.model +" --nlstm "+str(args.nlstm)
+        " --model "+args.model +" --num-epochs "+str(args.num_epochs) +" --nlstm "+str(args.nlstm)
     experiment.config.trial_code_directory = args.code_dir #'./sbonito'
     #experiment.config.trial_gpu_number=1
     #experiment.config.use_active_gpu=True
@@ -59,13 +60,13 @@ if __name__=="__main__":
     experiment.config.experiment_working_directory=args.nni_dir #'./sbonito/nni-experiments'
 
     experiment.config.max_trial_number = 10
-    experiment.config.trial_concurrency = 10
+    experiment.config.trial_concurrency = 1
 
     #experiment.config.max_experiment_duration = '5m'
 
     for port in range(8020,8090):
         try:
             experiment.run(port)
-            break
+            sys.exit(0)
         except:
             pass
