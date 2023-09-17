@@ -29,11 +29,12 @@
             "justMyCode": true,
             "args": [
                 "--data-dir", "/root/Acinetobacter_baumannii_AYP-A2/train_numpy_resquiggled",
-                "--output-dir", "./sbonito/test_nni_2",
-                "--model", "bonitosnn",
+                "--output-dir", "./sbonito/test_spikelin_5",
+                "--model", "bonitospikelin",
                 "--window-size", "2000",
                 "--batch-size", "4",
                 "--nlstm","0",
+                "--conv-th", "0.001",
                 //"--starting-lr","0.00002",
                 //"--warmup-steps","0",
                 //"--overwrite"

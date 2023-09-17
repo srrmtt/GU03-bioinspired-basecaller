@@ -51,7 +51,7 @@ class BonitoModel(BaseModelImpl):
     def build_cnn(self):
 
         cnn = nn.Sequential(
-            nn.Conv1d(
+            nn.Conv1d(          #4, 4, 2000
                 in_channels = 1, 
                 out_channels = 4, 
                 kernel_size = 5, 
@@ -59,7 +59,7 @@ class BonitoModel(BaseModelImpl):
                 padding=5//2, 
                 bias=True),
             nn.SiLU(),
-            nn.Conv1d(
+            nn.Conv1d(         #4, 16, 2000
                 in_channels = 4, 
                 out_channels = 16, 
                 kernel_size = 5, 
@@ -67,7 +67,7 @@ class BonitoModel(BaseModelImpl):
                 padding=5//2, 
                 bias=True),
             nn.SiLU(),
-            nn.Conv1d(
+            nn.Conv1d(           #4, 384, 400
                 in_channels = 16, 
                 out_channels = 384, 
                 kernel_size = 19, 

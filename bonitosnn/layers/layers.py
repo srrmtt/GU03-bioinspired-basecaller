@@ -36,7 +36,12 @@ class BonitoSLSTM(nn.Module):
             curr_y, syn, mem = self.rnn(x_step,syn,mem)
             lstm_out.append(curr_y)
         y=torch.stack(lstm_out)
-
+        """ #uncomment to estimate spiking operations and energy consumption
+        tot_spikes=torch.sum(y)/4
+        energy = tot_spikes*5.07e-10
+        print("slstm sops: ",tot_spikes)
+        print("slstm energy: ",energy*1e6)
+        """
         if self.reverse: 
             y = y.flip(0)
         return y
