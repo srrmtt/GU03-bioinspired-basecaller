@@ -75,8 +75,8 @@ if __name__ == '__main__':
     parser.add_argument("--overwrite", action='store_true', help='delete existing files in folder')
     parser.add_argument("--checkpoint", type=str, help='checkpoint file to resume training')
     parser.add_argument("--nlstm",type=int,default=0,choices=[0,1,2,3,4],help='number of lstm blocks must be between 0 and 4')
-    parser.add_argument("--conv-th",type=int,default=0.05,help='Neuron threshold for spikeconv and spikelin')
-    parser.add_argument("--slstm-th",type=int,default=0.05,help='slstm threshold')
+    parser.add_argument("--conv-th",type=float,default=0.05,help='Neuron threshold for spikeconv and spikelin')
+    parser.add_argument("--slstm-th",type=float,default=0.05,help='slstm threshold')
     args = parser.parse_args()
     
     validate_every = 100
@@ -100,7 +100,9 @@ if __name__ == '__main__':
     elif args.model == 'bonitosnn':
         from bonitosnn.model.snn_model import BonitoSNNModel as Model 
     elif args.model == 'bonitospikeconv':
-        from bonitosnn.model.snn_model import BonitoSpikeConv as Model 
+        from bonitosnn.model.snn_model import BonitoSpikeConv as Model
+    elif args.model == 'bonitospikelin':
+        from bonitosnn.model.snn_model import BonitoSpikeLin as Model
    
     print('Creating dataset')
     dataset = BaseNanoporeDataset(

@@ -148,9 +148,9 @@ class BonitoSpikeConv(BonitoSNNModel):
                 self.neuron2=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th,learn_beta=True)
                 self.neuron3=snn.Leaky(beta=beta, spike_grad=grad, init_hidden=True,threshold=conv_th,learn_beta=True)
 
-                self.conv1=nn.Conv1d(in_channels = 1, out_channels = 4, kernel_size = 5, stride= 1, padding=5//2, bias=True),
-                self.conv2=nn.Conv1d(in_channels = 4, out_channels = 16, kernel_size = 5, stride= 1, padding=5//2, bias=True),
-                self.conv3=nn.Conv1d(in_channels = 16, out_channels = 384, kernel_size = 19, stride= 5, padding=19//2, bias=True),
+                self.conv1=nn.Conv1d(in_channels = 1, out_channels = 4, kernel_size = 5, stride= 1, padding=5//2, bias=True)
+                self.conv2=nn.Conv1d(in_channels = 4, out_channels = 16, kernel_size = 5, stride= 1, padding=5//2, bias=True)
+                self.conv3=nn.Conv1d(in_channels = 16, out_channels = 384, kernel_size = 19, stride= 5, padding=19//2, bias=True)
                 """
                 self.lin1=nn.Linear(1,4)
                 self.lin2=nn.Linear(4,16)
@@ -169,24 +169,32 @@ class BonitoSpikeConv(BonitoSNNModel):
                             )
 
             def forward(self, x):
-                """
-                mem1 = self.neuron1.init_leaky() #non necessario se init_hidden True
-                mem2 = self.neuron2.init_leaky()
-                mem3 = self.neuron3.init_leaky()
+                """ #uncomment to estimate sops and energy consumption
+                spike_probe=[]
+
                 spike_recording = []
                 mem_recording=[]
-                for x_step in x.permute(2,0,1):
+                for x_step in x: #.permute(2,0,1)
                     cur1=self.conv1(x_step)
-                    spk1,mem1=self.neuron1(cur1,mem1)
-                    cur2=self.neuron2(spk1)
-                    spk2,mem2=self.neuron2(cur2,mem2)
-                    cur3=self.neuron3(spk2)
-                    spk3,mem3=self.neuron3(cur3,mem3)
+                    spk1=self.neuron1(cur1) #,mem1) ,mem1
+                    cur2=self.conv2(spk1)
+                    spk2=self.neuron2(cur2)#,mem2) ,mem2
+                    cur3=self.conv3(spk2)
+                    spk3=self.neuron3(cur3)#,mem3) ,mem3
+
+                    spike_probe.append(spk1.flatten())
+                    spike_probe.append(spk2.flatten())
+                    spike_probe.append(spk3.flatten())
 
                     spike_recording.append(spk3)
-                    mem_recording.append(mem3)
+                    #mem_recording.append(mem3)
                 
-                return torch.stack(spike_recording),torch.stack(mem_recording)
+                tot_spikes=torch.sum(torch.cat(spike_probe))/4
+                energy = tot_spikes*5.07e-10
+                print("spikeconv sops: ",tot_spikes)
+                print("spikeconv energy: ",energy*1e6)
+                
+                return torch.stack(spike_recording) #,torch.stack(mem_recording)
                 """
                 #utils.reset(self.net)
                 utils.reset(self.cnet)
@@ -210,8 +218,8 @@ class BonitoSpikeConv(BonitoSNNModel):
         return SpikeConv(conv_threshold)
     
 class BonitoSpikeLin(BonitoSNNModel):
-    def __init__(self, convolution=None, encoder=None, decoder=None, reverse=True, load_default=False,slstm_threshold=0.05,conv_threshold=0.05, *args, **kwargs):
-        super().__init__(convolution, encoder, decoder, reverse, load_default,slstm_threshold, *args, **kwargs)
+    def __init__(self, convolution=None, encoder=None, decoder=None, reverse=True, load_default=False,slstm_threshold=0.05,conv_threshold=0.05, nlstm=0, *args, **kwargs):
+        super().__init__(convolution, encoder, decoder, reverse, load_default,nlstm,slstm_threshold, *args, **kwargs)
         self.convolution=self.build_spike_lin(conv_threshold) #build_spike_conv() #build_cnn()
 
     def build_spike_lin(self,conv_threshold):
@@ -255,7 +263,21 @@ class BonitoSpikeLin(BonitoSNNModel):
                 utils.reset(self.linet)
 
                 self.linet.train()
+                """ #uncomment for sops and energy estimation
+                lin1=self.lin1(x.permute(2,0,1))
+                spk1=self.neuron1(lin1)
+                lin2=self.lin2(spk1)
+                spk2=self.neuron2(lin2)
+                lin3=self.lin3(spk2)
+                spk3=self.neuron3(lin3)
+                lin4=self.lin4(spk3.permute(1,2,0))
+                spk4=self.neuron4(lin4)
 
+                tot_spikes=torch.sum(torch.cat([spk.flatten() for spk in [spk1,spk2,spk3,spk4]]))/4
+                energy = tot_spikes*5.07e-10
+                print("spikelin sops: ",tot_spikes)
+                print("spikelin energy: ",energy*1e6)
+                """
                 x1=self.linet(x.permute(2,0,1))
                 y=self.neuron4(self.lin4(x1.permute(1,2,0)))
 
