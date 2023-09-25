@@ -1,5 +1,5 @@
 # GU03-bioinspired-basecaller
-This repository contain the code and scripts to train and evaluate nanopore basecalling neural networks Bonito based on the previows work of https://github.com/marcpaga/basecalling_architectures. Our repository give the possibility to replace N levels SLSTM with N levels SNN in the encoder of the architecture bonito (with N ranging from 0 to 5). We also implemented other models like bonitospikeconv and bonitospikelin that attempt to build a fully spiking architecture.
+This repository contain the code and scripts to train and evaluate nanopore basecalling neural networks Bonito based on the Based on the code base: https://github.com/marcpaga/nanopore_benchmark used for the paper Comprehensive benchmark and architectural analysis of deep learning models for nanopore sequencing basecalling available at: https://www.biorxiv.org/content/10.1101/2022.05.17.492272v2. Our repository give the possibility to replace N levels SLSTM with N levels SNN in the encoder of the architecture bonito (with N ranging from 0 to 5). We also implemented other models like bonitospikeconv and bonitospikelin that attempt to build a fully spiking architecture.
 
 
 ## Installation
