@@ -7,6 +7,11 @@ import time
 
 
 if __name__ == '__main__':
+    """
+    Script designed to apply the tombo resquiggle command to a whole dataset,
+    it works on wick-like structure folders, adapting the command with the correct
+    reference file for each species, either per-read or complete genome. 
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", type=str, help='dataset, structured as wick')

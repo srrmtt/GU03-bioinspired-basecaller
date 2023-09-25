@@ -6,6 +6,10 @@ from subprocess import Popen,PIPE
 
 
 if __name__ == '__main__':
+    """
+    Script that applies basecalling in parallel on all the different subspecies
+    of a wick-like structured dataset. Designed to speed up the process.
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", type=str, help='wick structured dataset')

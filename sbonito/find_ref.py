@@ -3,6 +3,10 @@ import argparse
 
 
 if __name__ == "__main__":
+    """
+    Script that check which kind of reference file each species is provided with.
+    Used to assess the number of species without fasta and discard them during basecalling.
+    """
     #parser = argparse.ArgumentParser()
     #parser.add_argument("--fast5-list", type=str, required = False)
     #args = parser.parse_args()

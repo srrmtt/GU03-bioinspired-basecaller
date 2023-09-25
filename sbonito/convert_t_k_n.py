@@ -19,6 +19,10 @@ import nengo_dl
 import tensorflow as tf
 
 if __name__ =="__main__":
+    """
+    script that tries to convert a pytorch trained model to keras and then to the
+    spiking equivalent through nengo.
+    """
 
     checkpoint_file="./sbonito/trained/bonito_trained/inter_2000/checkpoint.pt"
 

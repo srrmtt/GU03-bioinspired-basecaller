@@ -14,6 +14,10 @@ from constants import NON_RECURRENT_DECODING_DICT, NON_RECURRENT_ENCODING_DICT, 
 from torch.utils.data import DataLoader
 
 if __name__=="__main__":
+    """
+    Experimental script that estimate the memory, flops, sops and energy footprint
+    of all the proposed models
+    """
 
     device = torch.device("cpu" if torch.cuda.is_available() else "cpu")
     

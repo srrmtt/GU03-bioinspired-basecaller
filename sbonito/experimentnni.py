@@ -6,6 +6,11 @@ import sys
 
 
 if __name__=="__main__":
+    """
+    Script that instatiate the NNI experiment with the Anneal tuner. Calls trainoriginalnni for each
+    trial. It look for the first free port in [8020,8090], needed for server deployment
+    """
+    
     parser = argparse.ArgumentParser()
     #args di train_original_nni
     parser.add_argument("--data-dir", type=str, help='Path where the data for the dataloaders is stored', 
