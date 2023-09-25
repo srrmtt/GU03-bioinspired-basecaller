@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 if __name__=="__main__":
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu" if torch.cuda.is_available() else "cpu")
     
     decoding_dict = NON_RECURRENT_DECODING_DICT
     encoding_dict = NON_RECURRENT_ENCODING_DICT
@@ -45,7 +45,11 @@ if __name__=="__main__":
         nlstm=0,
         conv_threshold=0.05,
         slstm_threshold=0.05
-    )
+    ).to(device)
+    #model = model.to(device)
+
+    model_snn.load("/root/checkpoint_trial_3.pt", initialize_lazy = True)
+    model_snn.to(device)
 
     param_size = 0
     for param in model_snn.parameters():
@@ -90,7 +94,10 @@ if __name__=="__main__":
         nlstm=0,
         conv_threshold=0.05,
         slstm_threshold=0.05
-    )
+    ).to(device)
+
+    model_spikeconv.load("/root/test_nni_spikeconv/trial_1/checkpoints/checkpoint_56876.pt", initialize_lazy = True)
+    model_spikeconv.to(device)
 
     param_size = 0
     for param in model_spikeconv.parameters():
