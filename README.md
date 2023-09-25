@@ -1,5 +1,7 @@
 # GU03-bioinspired-basecaller
-This repository contain the code and scripts to train and evaluate nanopore basecalling neural networks Bonito from R9.4.1 flow cells data. In this repository we have given the possibility to replace N levels SLSTM with N levels SNN in the encoder of the architecture bonito (with N ranging from 0 to 5).
+This repository contain the code and scripts to train and evaluate nanopore basecalling neural networks Bonito based on the previows work of https://github.com/marcpaga/basecalling_architectures. Our repository give the possibility to replace N levels SLSTM with N levels SNN in the encoder of the architecture bonito (with N ranging from 0 to 5). We also implemented other models like bonitospikeconv and bonitospikelin that attempt to build a fully spiking architecture.
+
+
 ## Installation
 This code has been tested on python 3.9.16.
 ```
@@ -95,6 +97,20 @@ The tuning in bonitospikeconv works with the following hyperparameters:
         }
 ```
 Bonitspikeconv tuning also performs tuning in leaky neurons present in feature extracture
+
+## Basecalling
+Once a model has been trained, it can be used for basecalling. Here's an example command with the demo data:
+```
+source .bashrc
+conda activate gu3
+cd GU03-bioinspired-basecaller/sbonito/
+python ./scripts/basecall_original.py \
+--model bonitosnn \
+--fast5-list ./inter_task_test_reads.txt \
+--checkpoint ./trained/papermodels/inter_2000/checkpoint.pt \
+--output-file ./trained/papermodels/inter_basecall_snn.fastq
+```
+
 ## Evaluation
 For the evaluation of the various model lunch this script:
 ```
